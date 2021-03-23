@@ -34,6 +34,11 @@ jobs:
             is_focal: true
             include_frontend_tests: false
 
+          - docker_image: fedora:33
+            name: Fedora 33
+            os: 33
+            include_frontend_tests: false
+
     runs-on: ubuntu-latest
     name: ${{ matrix.name }}
     container: ${{ matrix.docker_image }}
