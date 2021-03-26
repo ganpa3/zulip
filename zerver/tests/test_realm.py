@@ -511,10 +511,10 @@ class RealmTest(ZulipTestCase):
         self.assertEqual(result.json()["user"]["email"], f"user{hamlet.id}@zulip.testserver")
         self.assertEqual(result.json()["user"].get("delivery_email"), None)
 
-    def test_change_stream_creation_policy(self) -> None:
+    def _test_change_stream_creation_policy(self, stream_policy: str) -> None:
         # We need an admin user.
         self.login("iago")
-        req = dict(create_stream_policy=orjson.dumps(Realm.POLICY_ADMINS_ONLY).decode())
+        req = {stream_policy: orjson.dumps(Realm.POLICY_ADMINS_ONLY).decode()}
         result = self.client_patch("/json/realm", req)
         self.assert_json_success(result)
 
@@ -522,6 +522,9 @@ class RealmTest(ZulipTestCase):
         req = dict(create_stream_policy=orjson.dumps(invalid_value).decode())
         result = self.client_patch("/json/realm", req)
         self.assert_json_error(result, "Invalid create_stream_policy")
+
+    def test_change_stream_creation_policy(self) -> None:
+        self._test_change_stream_creation_policy("create_stream_policy")
 
     def test_change_invite_to_stream_policy(self) -> None:
         # We need an admin user.
