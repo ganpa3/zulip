@@ -3064,26 +3064,29 @@ class SubscriptionAPITest(ZulipTestCase):
         with mock.patch("zerver.models.UserProfile.can_create_streams", return_value=False):
             self.common_subscribe_to_streams(self.test_user, ["stream2"])
 
-    def test_user_settings_for_creating_streams(self) -> None:
+    def _test_user_settings_for_creating_streams(
+        self, stream_policy: str, invite_only: bool
+    ) -> None:
         user_profile = self.example_user("cordelia")
         realm = user_profile.realm
 
         do_set_realm_property(
-            realm, "create_stream_policy", Realm.POLICY_ADMINS_ONLY, acting_user=None
+            realm, stream_policy, Realm.POLICY_ADMINS_ONLY, acting_user=None
         )
         do_change_user_role(user_profile, UserProfile.ROLE_MODERATOR, acting_user=None)
         result = self.common_subscribe_to_streams(
             user_profile,
             ["new_stream1"],
+            invite_only=invite_only,
             allow_fail=True,
         )
         self.assert_json_error(result, "Only administrators can create streams.")
 
         do_change_user_role(user_profile, UserProfile.ROLE_REALM_ADMINISTRATOR, acting_user=None)
-        self.common_subscribe_to_streams(user_profile, ["new_stream1"])
+        self.common_subscribe_to_streams(user_profile, ["new_stream1"], invite_only=invite_only)
 
         do_set_realm_property(
-            realm, "create_stream_policy", Realm.POLICY_MODERATORS_ONLY, acting_user=None
+            realm, stream_policy, Realm.POLICY_MODERATORS_ONLY, acting_user=None
         )
         do_change_user_role(user_profile, UserProfile.ROLE_MEMBER, acting_user=None)
         # Make sure that we are checking the permission with a full member,
@@ -3100,12 +3103,13 @@ class SubscriptionAPITest(ZulipTestCase):
         self.common_subscribe_to_streams(user_profile, ["new_stream2"])
 
         do_set_realm_property(
-            realm, "create_stream_policy", Realm.POLICY_MEMBERS_ONLY, acting_user=None
+            realm, stream_policy, Realm.POLICY_MEMBERS_ONLY, acting_user=None
         )
         do_change_user_role(user_profile, UserProfile.ROLE_GUEST, acting_user=None)
         result = self.common_subscribe_to_streams(
             user_profile,
-            ["new_stream2"],
+            ["new_stream3"],
+            invite_only=invite_only,
             allow_fail=True,
         )
         self.assert_json_error(result, "Not allowed for guest users")
@@ -3113,22 +3117,27 @@ class SubscriptionAPITest(ZulipTestCase):
         do_change_user_role(user_profile, UserProfile.ROLE_MEMBER, acting_user=None)
         self.common_subscribe_to_streams(
             self.test_user,
-            ["new_stream3"],
+            ["new_stream4"],
+            invite_only=invite_only,
         )
 
         do_set_realm_property(
-            realm, "create_stream_policy", Realm.POLICY_FULL_MEMBERS_ONLY, acting_user=None
+            realm, stream_policy, Realm.POLICY_FULL_MEMBERS_ONLY, acting_user=None
         )
         do_set_realm_property(realm, "waiting_period_threshold", 100000, acting_user=None)
         result = self.common_subscribe_to_streams(
             user_profile,
-            ["new_stream4"],
+            ["new_stream5"],
+            invite_only=invite_only,
             allow_fail=True,
         )
         self.assert_json_error(result, "Your account is too new to create streams.")
 
         do_set_realm_property(realm, "waiting_period_threshold", 0, acting_user=None)
-        self.common_subscribe_to_streams(user_profile, ["new_stream3"])
+        self.common_subscribe_to_streams(user_profile, ["new_stream3"], invite_only=invite_only)
+
+    def test_user_settings_for_creating_streams(self) -> None:
+        self._test_user_settings_for_creating_streams("create_stream_policy", invite_only=False)
 
     def test_can_create_streams(self) -> None:
         othello = self.example_user("othello")
