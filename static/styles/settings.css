@@ -1529,7 +1529,8 @@ body:not(.night-mode) #settings_page .custom_user_field .datepicker {
 
 #desktop_icon_count_display,
 #id_realm_waiting_period_setting,
-#id_realm_create_stream_policy,
+#id_realm_create_public_stream_policy,
+#id_realm_create_private_stream_policy,
 #id_realm_invite_to_stream_policy,
 #id_realm_org_join_restrictions,
 #id_realm_bot_creation_policy,

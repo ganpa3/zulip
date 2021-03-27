@@ -11,7 +11,7 @@
             <div class="left">
                 <div class="search-container">
                     <form id="add_new_subscription" class="form-inline" action="">
-                        {{#if can_create_streams}}
+                        {{#if (or can_create_public_streams can_create_private_streams)}}
                         <input type="submit" class="create_stream_button"
                           value="+" title="{{t 'Create new stream' }} (n)"/>
                         {{/if}}
@@ -34,7 +34,7 @@
                     <div id="stream_settings_title" class="stream-info-title">{{t 'Stream settings' }}</div>
                 </div>
                 <div class="nothing-selected">
-                    {{#if can_create_streams}}
+                    {{#if (or can_create_public_streams can_create_private_streams)}}
                     <button type="button" class="create_stream_button button small rounded">{{t 'Create stream' }}</button>
                     <span>{{t 'First time? Read our <a href="/help/getting-your-organization-started-with-zulip#create-streams" target="_blank" rel="noopener noreferrer">guidelines</a> for creating and naming streams.' }}</span>
                     {{/if}}

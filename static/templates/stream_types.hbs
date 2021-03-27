@@ -4,12 +4,14 @@
         {{> help_link_widget link="/help/stream-permissions" }}
     </h4>
     {{#each stream_privacy_policy_values}}
-    <li>
-        <label class="radio">
-            <input type="radio" name="privacy" value="{{ this.code }}" {{#if (eq this.code ../stream_privacy_policy) }}checked{{/if}} />
-            <b>{{ this.name }}:</b> {{ this.description }}
-        </label>
-    </li>
+        {{#if (or (and ../can_create_public_streams (eq this.code "public")) (and ../can_create_private_streams (not (eq this.code "public"))))}}
+        <li>
+            <label class="radio">
+                <input type="radio" name="privacy" value="{{ this.code }}" checked />
+                <b>{{ this.name }}:</b> {{ this.description }}
+            </label>
+        </li>
+        {{/if}}
     {{/each}}
     <h4>{{t 'Who can post to the stream?'}}
         {{> help_link_widget link="/help/stream-sending-policy" }}

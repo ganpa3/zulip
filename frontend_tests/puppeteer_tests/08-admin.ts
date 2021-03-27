@@ -99,24 +99,45 @@ async function submit_stream_permissions_change(page: Page): Promise<void> {
     await test_permissions_change_save_worked(page);
 }
 
-async function test_set_create_streams_to_admins_only(page: Page): Promise<void> {
-    console.log("Test setting create streams policy to 'admins only'.");
-    await page.waitForSelector("#id_realm_create_stream_policy", {visible: true});
-    await page.evaluate(() => $("#id_realm_create_stream_policy").val(2).trigger("change"));
+async function test_set_create_public_streams_to_admins_only(page: Page): Promise<void> {
+    console.log("Test setting create public streams policy to 'admins only'.");
+    await page.waitForSelector("#id_realm_create_public_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_public_stream_policy").val(2).trigger("change"));
     await submit_stream_permissions_change(page);
 }
 
-async function test_set_create_streams_to_members_and_admins(page: Page): Promise<void> {
-    console.log("Test setting create streams policy to 'members and admins'.");
-    await page.waitForSelector("#id_realm_create_stream_policy", {visible: true});
-    await page.evaluate(() => $("#id_realm_create_stream_policy").val(1).trigger("change"));
+async function test_set_create_public_streams_to_members_and_admins(page: Page): Promise<void> {
+    console.log("Test setting create public streams policy to 'members and admins'.");
+    await page.waitForSelector("#id_realm_create_public_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_public_stream_policy").val(1).trigger("change"));
     await submit_stream_permissions_change(page);
 }
 
-async function test_set_create_streams_policy_to_full_members(page: Page): Promise<void> {
-    console.log("Test setting create streams policy to 'full members'.");
-    await page.waitForSelector("#id_realm_create_stream_policy", {visible: true});
-    await page.evaluate(() => $("#id_realm_create_stream_policy").val(3).trigger("change"));
+async function test_set_create_public_streams_policy_to_full_members(page: Page): Promise<void> {
+    console.log("Test setting create public streams policy to 'full members'.");
+    await page.waitForSelector("#id_realm_create_public_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_public_stream_policy").val(3).trigger("change"));
+    await submit_stream_permissions_change(page);
+}
+
+async function test_set_create_private_streams_to_admins_only(page: Page): Promise<void> {
+    console.log("Test setting create private_streams policy to 'admins only'.");
+    await page.waitForSelector("#id_realm_create_private_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_private_stream_policy").val(2).trigger("change"));
+    await submit_stream_permissions_change(page);
+}
+
+async function test_set_create_private_streams_to_members_and_admins(page: Page): Promise<void> {
+    console.log("Test setting create private streams policy to 'members and admins'.");
+    await page.waitForSelector("#id_realm_create_private_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_private_stream_policy").val(1).trigger("change"));
+    await submit_stream_permissions_change(page);
+}
+
+async function test_set_create_private_streams_policy_to_full_members(page: Page): Promise<void> {
+    console.log("Test setting create private streams policy to 'full members'.");
+    await page.waitForSelector("#id_realm_create_private_stream_policy", {visible: true});
+    await page.evaluate(() => $("#id_realm_create_private_stream_policy").val(3).trigger("change"));
     await submit_stream_permissions_change(page);
 }
 
@@ -187,9 +208,13 @@ async function test_set_new_user_threshold_to_N_days(page: Page): Promise<void> 
 async function test_organization_permissions(page: Page): Promise<void> {
     await page.click("li[data-section='organization-permissions']");
 
-    await test_set_create_streams_to_admins_only(page);
-    await test_set_create_streams_to_members_and_admins(page);
-    await test_set_create_streams_policy_to_full_members(page);
+    await test_set_create_public_streams_to_admins_only(page);
+    await test_set_create_public_streams_to_members_and_admins(page);
+    await test_set_create_public_streams_policy_to_full_members(page);
+
+    await test_set_create_private_streams_to_admins_only(page);
+    await test_set_create_private_streams_to_members_and_admins(page);
+    await test_set_create_private_streams_policy_to_full_members(page);
 
     await test_set_invite_to_streams_policy_to_admins_only(page);
     await test_set_invite_to_streams_policy_to_members_and_admins(page);

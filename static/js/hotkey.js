@@ -703,7 +703,11 @@ export function process_hotkey(e, hotkey) {
             subs.view_stream();
             return true;
         }
-        if (event_name === "n_key" && overlays.streams_open() && page_params.can_create_streams) {
+        if (
+            event_name === "n_key" &&
+            overlays.streams_open() &&
+            (page_params.can_create_private_streams || page_params.can_create_public_streams)
+        ) {
             subs.open_create_stream();
             return true;
         }

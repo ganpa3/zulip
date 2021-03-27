@@ -634,7 +634,8 @@ export function setup_page(callback) {
         $("#subscriptions_table").empty();
 
         const template_data = {
-            can_create_streams: page_params.can_create_streams,
+            can_create_private_streams: page_params.can_create_private_streams,
+            can_create_public_streams: page_params.can_create_public_streams,
             hide_all_streams: !should_list_all_streams(),
             max_name_length: page_params.stream_name_max_length,
             max_description_length: page_params.stream_description_max_length,

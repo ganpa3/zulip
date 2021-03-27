@@ -285,13 +285,13 @@ run_test("allow normal typing when processing text", (override) => {
 });
 
 run_test("streams", (override) => {
-    page_params.can_create_streams = true;
+    page_params.can_create_public_streams = true;
     override(overlays, "streams_open", () => true);
     override(overlays, "is_active", () => true);
     assert_mapping("S", subs, "keyboard_sub");
     assert_mapping("V", subs, "view_stream");
     assert_mapping("n", subs, "open_create_stream");
-    page_params.can_create_streams = false;
+    page_params.can_create_public_streams = false;
     assert_unmapped("n");
 });
 

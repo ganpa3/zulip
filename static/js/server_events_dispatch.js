@@ -175,7 +175,8 @@ export function dispatch_normal_event(event) {
                 user_group_edit_policy: noop,
                 avatar_changes_disabled: settings_account.update_avatar_change_display,
                 bot_creation_policy: settings_bots.update_bot_permissions_ui,
-                create_stream_policy: noop,
+                create_public_stream_policy: noop,
+                create_private_stream_policy: noop,
                 invite_to_stream_policy: noop,
                 default_code_block_language: noop,
                 default_language: noop,
@@ -212,11 +213,16 @@ export function dispatch_normal_event(event) {
                         page_params["realm_" + event.property] = event.value;
                         realm_settings[event.property]();
                         settings_org.sync_realm_settings(event.property);
-                        if (event.property === "create_stream_policy") {
+                        if (event.property === "create_public_stream_policy") {
                             // TODO: Add waiting_period_threshold logic here.
-                            page_params.can_create_streams =
+                            page_params.can_create_public_streams =
                                 page_params.is_admin ||
-                                page_params.realm_create_stream_policy === 1;
+                                page_params.realm_create_public_stream_policy === 1;
+                        } else if (event.property === "create_private_stream_policy") {
+                            // TODO: Add waiting_period_threshold logic here.
+                            page_params.can_create_private_streams =
+                                page_params.is_admin ||
+                                page_params.realm_create_private_stream_policy === 1;
                         } else if (event.property === "invite_to_stream_policy") {
                             // TODO: Add waiting_period_threshold logic here.
                             page_params.can_invite_to_stream =
