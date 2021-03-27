@@ -138,6 +138,30 @@ def create_stream_if_needed(
     return stream, created
 
 
+# The error message depends on the type of stream the user is trying to create, since stream policy
+# is handled separately for public and private streams.
+def raise_error_if_user_cannot_create_stream(
+    user_profile: UserProfile, invite_only: bool = False
+) -> None:
+    if invite_only:
+        if not user_profile.can_create_private_streams():
+            if user_profile.realm.create_private_stream_policy == Realm.POLICY_ADMINS_ONLY:
+                raise JsonableError(_("Only administrators can create private streams."))
+            if user_profile.realm.create_stream_policy == Realm.POLICY_MODERATORS_ONLY:
+                raise JsonableError(
+                    _("Only administrators and moderators can create private streams.")
+                )
+            if user_profile.realm.create_private_stream_policy == Realm.POLICY_FULL_MEMBERS_ONLY:
+                raise JsonableError(_("Your account is too new to create private streams."))
+    elif not user_profile.can_create_public_streams():
+        if user_profile.realm.create_public_stream_policy == Realm.POLICY_ADMINS_ONLY:
+            raise JsonableError(_("Only administrators can create public streams."))
+        if user_profile.realm.create_stream_policy == Realm.POLICY_MODERATORS_ONLY:
+            raise JsonableError(_("Only administrators and moderators can create public streams."))
+        if user_profile.realm.create_public_stream_policy == Realm.POLICY_FULL_MEMBERS_ONLY:
+            raise JsonableError(_("Your account is too new to create public streams."))
+
+
 def create_streams_if_needed(
     realm: Realm, stream_dicts: List[StreamDict], acting_user: Optional[UserProfile] = None
 ) -> Tuple[List[Stream], List[Stream]]:
@@ -146,6 +170,10 @@ def create_streams_if_needed(
     added_streams: List[Stream] = []
     existing_streams: List[Stream] = []
     for stream_dict in stream_dicts:
+        if acting_user is not None:
+            raise_error_if_user_cannot_create_stream(
+                acting_user, invite_only=stream_dict.get("invite_only", False)
+            )
         stream, created = create_stream_if_needed(
             realm,
             stream_dict["name"],
@@ -616,15 +644,7 @@ def list_to_streams(
         created_streams: List[Stream] = []
     else:
         # autocreate=True path starts here
-        if not user_profile.can_create_streams():
-            if user_profile.realm.create_stream_policy == Realm.POLICY_ADMINS_ONLY:
-                raise JsonableError(_("Only administrators can create streams."))
-            if user_profile.realm.create_stream_policy == Realm.POLICY_MODERATORS_ONLY:
-                raise JsonableError(_("Only administrators and moderators can create streams."))
-            if user_profile.realm.create_stream_policy == Realm.POLICY_FULL_MEMBERS_ONLY:
-                raise JsonableError(_("Your account is too new to create streams."))
-            raise JsonableError(_("Not allowed for guest users"))
-        elif not autocreate:
+        if not autocreate:
             raise JsonableError(
                 _("Stream(s) ({}) do not exist").format(
                     ", ".join(stream_dict["name"] for stream_dict in missing_stream_dicts),

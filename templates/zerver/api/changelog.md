@@ -10,6 +10,13 @@ below features are supported.
 
 ## Changes in Zulip 4.0
 
+**Feature level 47**
+
+* [`POST /register`](/api/register-queue): Added two new settings,
+  `create_private_stream_policy` and `create_public_stream_policy`,
+  for controlling who can create public and private streams.
+  Removed existing `create_stream_policy` setting.
+
 **Feature level 46**
 
 * [`GET /messages`](/api/get-messages) and [`GET
