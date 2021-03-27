@@ -497,7 +497,8 @@ class RealmTest(ZulipTestCase):
         self.assert_json_error(result, f"Invalid {stream_policy}")
 
     def test_change_stream_creation_policy(self) -> None:
-        self._test_change_stream_creation_policy("create_stream_policy")
+        self._test_change_stream_creation_policy("create_private_stream_policy")
+        self._test_change_stream_creation_policy("create_public_stream_policy")
 
     def test_change_invite_to_stream_policy(self) -> None:
         # We need an admin user.
@@ -585,7 +586,8 @@ class RealmTest(ZulipTestCase):
 
         invalid_values = dict(
             bot_creation_policy=10,
-            create_stream_policy=10,
+            create_public_stream_policy=10,
+            create_private_stream_policy=10,
             invite_to_stream_policy=10,
             email_address_visibility=10,
             message_retention_days=10,
@@ -825,7 +827,13 @@ class RealmAPITest(ZulipTestCase):
             message_retention_days=[10, 20],
             name=["Zulip", "New Name"],
             waiting_period_threshold=[10, 20],
-            create_stream_policy=[
+            create_public_stream_policy=[
+                Realm.POLICY_ADMINS_ONLY,
+                Realm.POLICY_MEMBERS_ONLY,
+                Realm.POLICY_FULL_MEMBERS_ONLY,
+                Realm.POLICY_MODERATORS_ONLY,
+            ],
+            create_private_stream_policy=[
                 Realm.POLICY_ADMINS_ONLY,
                 Realm.POLICY_MEMBERS_ONLY,
                 Realm.POLICY_FULL_MEMBERS_ONLY,

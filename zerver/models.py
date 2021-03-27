@@ -275,7 +275,10 @@ class Realm(models.Model):
     DEFAULT_COMMUNITY_TOPIC_EDITING_LIMIT_SECONDS = 259200
 
     # Who in the organization is allowed to create streams.
-    create_stream_policy: int = models.PositiveSmallIntegerField(default=POLICY_MEMBERS_ONLY)
+    create_public_stream_policy: int = models.PositiveSmallIntegerField(default=POLICY_MEMBERS_ONLY)
+    create_private_stream_policy: int = models.PositiveSmallIntegerField(
+        default=POLICY_MEMBERS_ONLY
+    )
 
     # Who in the organization is allowed to edit topics of any message.
     edit_topic_policy: int = models.PositiveSmallIntegerField(default=POLICY_EVERYONE)
@@ -510,7 +513,8 @@ class Realm(models.Model):
         allow_edit_history=bool,
         allow_message_deleting=bool,
         bot_creation_policy=int,
-        create_stream_policy=int,
+        create_public_stream_policy=int,
+        create_private_stream_policy=int,
         invite_to_stream_policy=int,
         move_messages_between_streams_policy=int,
         default_language=str,
@@ -1618,7 +1622,8 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
 
     def has_permission(self, policy_name: str) -> bool:
         if policy_name not in [
-            "create_stream_policy",
+            "create_public_stream_policy",
+            "create_private_stream_policy",
             "edit_topic_policy",
             "invite_to_stream_policy",
             "invite_to_realm_policy",
@@ -1648,8 +1653,11 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
         assert policy_value == Realm.POLICY_FULL_MEMBERS_ONLY
         return not self.is_provisional_member
 
-    def can_create_streams(self) -> bool:
-        return self.has_permission("create_stream_policy")
+    def can_create_public_streams(self) -> bool:
+        return self.has_permission("create_public_stream_policy")
+
+    def can_create_private_streams(self) -> bool:
+        return self.has_permission("create_private_stream_policy")
 
     def can_subscribe_other_users(self) -> bool:
         return self.has_permission("invite_to_stream_policy")

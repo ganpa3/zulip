@@ -11,6 +11,13 @@ below features are supported.
 
 ## Changes in Zulip 5.0
 
+**Feature level 76**
+
+* [`POST /register`](/api/register-queue): Added two new settings,
+  `create_private_stream_policy` and `create_public_stream_policy`,
+  for controlling who can create public and private streams.
+  Removed existing `create_stream_policy` setting.
+
 **Feature level 75**
 
 * [`POST /register`](/api/register-queue), `PATCH /realm`: Replaced `allow_community_topic_editing`
