@@ -8763,12 +8763,24 @@ paths:
                           Present if `realm` is present in `fetch_event_types`.
 
                           The policy for which users can create bot users in this organization.
-                      realm_create_stream_policy:
+                      realm_create_public_stream_policy:
                         type: integer
                         description: |
                           Present if `realm` is present in `fetch_event_types`.
 
-                          The policy for which users can create streams in this organization.
+                          The policy for which users can create public streams in this organization.
+
+                          **Changes**: Before Zulip 4.0 (feature level 76) split it,
+                          the realm_create_stream_policy field controlled creation of both public and private streams.
+                      realm_create_private_stream_policy:
+                        type: integer
+                        description: |
+                          Present if `realm` is present in `fetch_event_types`.
+
+                          The policy for which users can create private streams in this organization.
+
+                          **Changes**: Before Zulip 4.0 (feature level 76) split it,
+                          the realm_create_stream_policy field controlled creation of both public and private streams.
                       realm_invite_to_stream_policy:
                         type: integer
                         description: |
@@ -9526,11 +9538,35 @@ paths:
                           resolution.  See also `avatar_url_medium`.
                       can_create_streams:
                         type: boolean
+                        deprecated: true
                         description: |
                           Present if `realm_user` is present in `fetch_event_types`.
 
                           Whether the current user is allowed to create streams with
                           the organization's [stream creation policy](/help/configure-who-can-create-streams).
+
+                          **Deprecated**: This field will be removed in future versions in favour of separate fields
+                          for public and private streams.
+                      can_create_public_streams:
+                        type: boolean
+                        description: |
+                          Present if `realm_user` is present in `fetch_event_types`.
+
+                          Whether the current user is allowed to create public streams with
+                          the organization's [stream creation policy](/help/configure-who-can-create-streams).
+
+                          **Changes**: Before Zulip 4.0 (feature level 76) split it,
+                          the can_create_streams field controlled creation of both public and private streams.
+                      can_create_private_streams:
+                        type: boolean
+                        description: |
+                          Present if `realm_user` is present in `fetch_event_types`.
+
+                          Whether the current user is allowed to create private streams with
+                          the organization's [stream creation policy](/help/configure-who-can-create-streams).
+
+                          **Changes**: Before Zulip 4.0 (feature level 76) split it,
+                          the can_create_streams field controlled creation of both public and private streams.
                       can_subscribe_other_users:
                         type: boolean
                         description: |

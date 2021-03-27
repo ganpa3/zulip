@@ -11,6 +11,13 @@ below features are supported.
 
 ## Changes in Zulip 5.0
 
+**Feature level 78**
+
+* [`POST /register`](/api/register-queue): Added two new settings,
+  `create_private_stream_policy` and `create_public_stream_policy`,
+  for controlling who can create public and private streams.
+  Removed existing `create_stream_policy` setting.
+
 **Feature level 77**
 
 * [`GET /events`](/api/get-events): Removed `recipient_id` and

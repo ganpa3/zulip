@@ -146,10 +146,16 @@ def create_streams_if_needed(
     added_streams: List[Stream] = []
     existing_streams: List[Stream] = []
     for stream_dict in stream_dicts:
+        invite_only = stream_dict.get("invite_only", False)
+        if acting_user is not None:
+            if invite_only and not acting_user.can_create_private_streams():
+                raise JsonableError(_("Insufficient permission"))
+            if not invite_only and not acting_user.can_create_public_streams():
+                raise JsonableError(_("Insufficient permission"))
         stream, created = create_stream_if_needed(
             realm,
             stream_dict["name"],
-            invite_only=stream_dict.get("invite_only", False),
+            invite_only=invite_only,
             stream_post_policy=stream_dict.get(
                 "stream_post_policy", Stream.STREAM_POST_POLICY_EVERYONE
             ),
@@ -658,11 +664,7 @@ def list_to_streams(
         created_streams: List[Stream] = []
     else:
         # autocreate=True path starts here
-        if not user_profile.can_create_streams():
-            # Guest users case will not be handled here as it will be
-            # handled by the decorator in add_subscriptions_backend.
-            raise JsonableError(_("Insufficient permission"))
-        elif not autocreate:
+        if not autocreate:
             raise JsonableError(
                 _("Stream(s) ({}) do not exist").format(
                     ", ".join(stream_dict["name"] for stream_dict in missing_stream_dicts),
