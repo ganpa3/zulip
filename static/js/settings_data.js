@@ -141,8 +141,12 @@ export function user_can_unsubscribe_other_users() {
     return page_params.is_admin;
 }
 
-export function user_can_create_streams() {
-    return user_has_permission(page_params.realm_create_stream_policy);
+export function user_can_create_private_streams() {
+    return user_has_permission(page_params.realm_create_private_stream_policy);
+}
+
+export function user_can_create_public_streams() {
+    return user_has_permission(page_params.realm_create_public_stream_policy);
 }
 
 export function user_can_move_messages_between_streams() {
