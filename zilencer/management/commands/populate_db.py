@@ -687,6 +687,7 @@ class Command(BaseCommand):
             recipient_streams = [
                 klass.type_id for klass in Recipient.objects.filter(type=Recipient.STREAM)
             ]
+            iago = get_user_by_delivery_email("iago@zulip.com", zulip_realm)
 
         # Extract a list of all users
         user_profiles: List[UserProfile] = list(UserProfile.objects.filter(is_bot=False))
