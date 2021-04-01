@@ -678,6 +678,10 @@ class Command(BaseCommand):
                     {"id": github_profile.id, "value": "zulipbot"},
                 ],
             )
+
+            # Create alertwords only if previous data is to be deleted, else
+            # they already exist.
+            create_alert_words(zulip_realm.id)
         else:
             zulip_realm = get_realm("zulip")
             recipient_streams = [
@@ -718,8 +722,6 @@ class Command(BaseCommand):
         personals_pairs = [
             random.sample(user_profiles_ids, 2) for i in range(options["num_personals"])
         ]
-
-        create_alert_words(zulip_realm.id)
 
         # Generate a new set of test data.
         create_test_data()
