@@ -692,7 +692,7 @@ class Command(BaseCommand):
         with open(IMAGE_FILE_PATH, "rb") as fp:
             check_add_realm_emoji(zulip_realm, "green_tick", iago, fp)
 
-        if not options["test_suite"]:
+        if options["delete"] and not options["test_suite"]:
             # Populate users with some bar data
             for user in user_profiles:
                 status: int = UserPresence.ACTIVE
