@@ -8,6 +8,7 @@ import * as channel from "./channel";
 import {$t, $t_html} from "./i18n";
 import * as ListWidget from "./list_widget";
 import * as loading from "./loading";
+import * as overlays from "./overlays";
 import {page_params} from "./page_params";
 import * as people from "./people";
 import * as settings_config from "./settings_config";
@@ -112,7 +113,7 @@ function do_revoke_invite() {
             $("#home-error"),
         );
     }
-    $("#revoke_invite_modal").modal("hide");
+    overlays.close_modal("#revoke_invite_modal");
     revoke_button.prop("disabled", true).text($t({defaultMessage: "Working…"}));
     let url = "/json/invites/" + meta.invite_id;
 
@@ -177,7 +178,7 @@ export function on_load_success(invites_data, initialize_event_handlers) {
             "data-is-multiuse",
             meta.is_multiuse,
         );
-        $("#revoke_invite_modal").modal("show");
+        overlays.open_modal("#revoke_invite_modal");
         $("#do_revoke_invite_button").off("click");
         $("#do_revoke_invite_button").on("click", do_revoke_invite);
     });
@@ -195,7 +196,7 @@ export function on_load_success(invites_data, initialize_event_handlers) {
 
         $("#resend_invite_modal .email").text(email);
         $("#resend_invite_modal #do_resend_invite_button").attr("data-invite-id", meta.invite_id);
-        $("#resend_invite_modal").modal("show");
+        overlays.open_modal("#resend_invite_modal");
     });
 
     $("#do_resend_invite_button").on("click", () => {
@@ -213,7 +214,7 @@ export function on_load_success(invites_data, initialize_event_handlers) {
                 $("#home-error"),
             );
         }
-        $("#resend_invite_modal").modal("hide");
+        overlays.close_modal("#resend_invite_modal");
         resend_button.prop("disabled", true).text($t({defaultMessage: "Working…"}));
         channel.post({
             url: "/json/invites/" + meta.invite_id + "/resend",

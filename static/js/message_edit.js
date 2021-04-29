@@ -18,6 +18,7 @@ import * as markdown from "./markdown";
 import * as message_lists from "./message_lists";
 import * as message_store from "./message_store";
 import * as message_viewport from "./message_viewport";
+import * as overlays from "./overlays";
 import {page_params} from "./page_params";
 import * as resize from "./resize";
 import * as rows from "./rows";
@@ -910,7 +911,7 @@ function hide_delete_btn_show_spinner(deleting) {
 
 export function delete_message(msg_id) {
     $("#delete-message-error").html("");
-    $("#delete_message_modal").modal("show");
+    overlays.open_modal("#delete_message_modal");
     if (currently_deleting_messages.includes(msg_id)) {
         hide_delete_btn_show_spinner(true);
     } else {
@@ -926,7 +927,7 @@ export function delete_message(msg_id) {
             channel.del({
                 url: "/json/messages/" + msg_id,
                 success() {
-                    $("#delete_message_modal").modal("hide");
+                    overlays.close_modal("#delete_message_modal");
                     currently_deleting_messages = currently_deleting_messages.filter(
                         (id) => id !== msg_id,
                     );
@@ -954,7 +955,7 @@ export function delete_topic(stream_id, topic_name) {
             topic_name,
         },
         success() {
-            $("#delete_topic_modal").modal("hide");
+            overlays.close_modal("#delete_topic_modal");
         },
     });
 }
@@ -980,7 +981,7 @@ export function move_topic_containing_message_to_stream(
             (id) => id !== message_id,
         );
         hide_topic_move_spinner();
-        $("#move_topic_modal").modal("hide");
+        overlays.close_modal("#move_topic_modal");
     }
     if (currently_topic_editing_messages.includes(message_id)) {
         hide_topic_move_spinner();

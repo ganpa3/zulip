@@ -369,10 +369,6 @@ export function hide_mobile_message_buttons_popover() {
     }
 }
 
-export function hide_user_profile() {
-    $("#user-profile-modal").modal("hide");
-}
-
 export function show_user_profile(user) {
     hide_all();
 
@@ -397,7 +393,7 @@ export function show_user_profile(user) {
     };
 
     $("#user-profile-modal-holder").html(render_user_profile_modal(args));
-    $("#user-profile-modal").modal("show");
+    overlays.open_modal("#user-profile-modal");
 
     settings_account.initialize_custom_user_type_fields(
         "#user-profile-modal #content",
@@ -1038,7 +1034,7 @@ export function register_click_handlers() {
     });
 
     $("body").on("click", "#user-profile-modal #name #edit-button", () => {
-        hide_user_profile();
+        overlays.close_modal("#user-profile-modal");
     });
 
     $("body").on("click", ".compose_mobile_button", function (e) {
@@ -1375,7 +1371,6 @@ export function hide_all_except_sidebars() {
     stream_popover.hide_starred_messages_popover();
     hide_user_sidebar_popover();
     hide_mobile_message_buttons_popover();
-    hide_user_profile();
     hide_user_info_popover();
     hide_playground_links_popover();
 

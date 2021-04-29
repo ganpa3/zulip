@@ -513,7 +513,7 @@ function confirm_deactivation(row, user_id, status_field) {
     function handle_confirm() {
         const row = get_user_info_row(user_id);
 
-        modal_elem.modal("hide");
+        overlays.close_modal("#deactivation_user_modal");
         const row_deactivate_button = row.find("button.deactivate");
         row_deactivate_button.prop("disabled", true).text($t({defaultMessage: "Working…"}));
         const opts = {
