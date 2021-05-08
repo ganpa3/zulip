@@ -146,6 +146,7 @@ export function confirm_mute_user(user_id) {
         html_body,
         html_yes_button: $t({defaultMessage: "Confirm"}),
         on_click,
+        fade: false,
     });
 }
 

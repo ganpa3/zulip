@@ -43,5 +43,6 @@ export function confirm_unstar_all_messages_in_topic(stream_id, topic) {
         html_body,
         html_yes_button: $t_html({defaultMessage: "Confirm"}),
         on_click,
+        fade: false,
     });
 }

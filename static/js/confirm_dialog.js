@@ -31,13 +31,14 @@ import * as overlays from "./overlays";
 */
 
 export function launch(conf) {
-    const html = render_confirm_dialog();
+    const html = render_confirm_dialog({fade: conf.fade});
     const confirm_dialog = $(html);
 
     const conf_fields = [
         // The next three fields should be safe HTML. If callers
         // interpolate user data into strings, they should use
         // templates.
+        "fade",
         "html_heading",
         "html_body",
         "html_yes_button",
