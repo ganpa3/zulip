@@ -337,14 +337,6 @@ td .button {
         margin-top: 9px;
     }
 
-    .loading_indicator_spinner {
-        width: 30%;
-        height: 30px;
-        margin-top: 7px;
-        vertical-align: middle;
-        display: inline-block;
-    }
-
     #default_language {
         text-decoration: none;
     }
