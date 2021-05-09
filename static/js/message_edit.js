@@ -1,6 +1,8 @@
 import ClipboardJS from "clipboard";
 import $ from "jquery";
 
+import render_delete_message_modal_body from "../templates/delete_message_modal_body.hbs";
+import render_delete_message_modal_heading from "../templates/delete_message_modal_heading.hbs";
 import render_message_edit_form from "../templates/message_edit_form.hbs";
 import render_topic_edit_form from "../templates/topic_edit_form.hbs";
 
@@ -10,6 +12,7 @@ import * as compose from "./compose";
 import * as compose_actions from "./compose_actions";
 import * as composebox_typeahead from "./composebox_typeahead";
 import * as condense from "./condense";
+import * as confirm_dialog from "./confirm_dialog";
 import * as echo from "./echo";
 import * as giphy from "./giphy";
 import {$t, $t_html} from "./i18n";
@@ -896,56 +899,57 @@ export function edit_last_sent_message() {
     });
 }
 
-function hide_delete_btn_show_spinner(deleting) {
-    if (deleting) {
-        $("do_delete_message_button").prop("disabled", true);
-        $("#delete_message_modal > div.modal-footer > button").hide();
-        const delete_spinner = $("#do_delete_message_spinner");
-        loading.make_indicator(delete_spinner, {abs_positioned: true});
-    } else {
-        loading.destroy_indicator($("#do_delete_message_spinner"));
-        $("#do_delete_message_button").prop("disabled", false);
-        $("#delete_message_modal > div.modal-footer > button").show();
-    }
-}
-
 export function delete_message(msg_id) {
     $("#delete-message-error").html("");
-    overlays.open_modal("#delete_message_modal");
-    if (currently_deleting_messages.includes(msg_id)) {
-        hide_delete_btn_show_spinner(true);
-    } else {
-        hide_delete_btn_show_spinner(false);
-    }
-    $("#do_delete_message_button")
-        .off()
-        .on("click", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            currently_deleting_messages.push(msg_id);
-            hide_delete_btn_show_spinner(true);
-            channel.del({
-                url: "/json/messages/" + msg_id,
-                success() {
-                    overlays.close_modal("#delete_message_modal");
-                    currently_deleting_messages = currently_deleting_messages.filter(
-                        (id) => id !== msg_id,
-                    );
-                    hide_delete_btn_show_spinner(false);
-                },
-                error(xhr) {
-                    currently_deleting_messages = currently_deleting_messages.filter(
-                        (id) => id !== msg_id,
-                    );
-                    hide_delete_btn_show_spinner(false);
-                    ui_report.error(
-                        $t_html({defaultMessage: "Error deleting message"}),
-                        xhr,
-                        $("#delete-message-error"),
-                    );
-                },
-            });
+
+    const html_heading = render_delete_message_modal_heading();
+    const html_body = render_delete_message_modal_body();
+    const modal_parent = $("#message_feed_container");
+
+    function do_delete_message() {
+        confirm_dialog.show_confirm_dialog_spinner();
+
+        currently_deleting_messages.push(msg_id);
+        channel.del({
+            url: "/json/messages/" + msg_id,
+            success() {
+                currently_deleting_messages = currently_deleting_messages.filter(
+                    (id) => id !== msg_id,
+                );
+                confirm_dialog.hide_confirm_dialog_spinner();
+                overlays.close_modal("#confirm_dialog_modal");
+            },
+            error(xhr) {
+                currently_deleting_messages = currently_deleting_messages.filter(
+                    (id) => id !== msg_id,
+                );
+
+                confirm_dialog.hide_confirm_dialog_spinner();
+                overlays.close_modal("#confirm_dialog_modal");
+                ui_report.error(
+                    $t_html({defaultMessage: "Error deleting message"}),
+                    xhr,
+                    $("#delete-message-error"),
+                );
+            },
         });
+    }
+
+    confirm_dialog.launch({
+        parent: modal_parent,
+        html_heading,
+        html_body,
+        html_yes_button: $t_html({defaultMessage: "Confirm"}),
+        on_click: do_delete_message,
+        fade: false,
+        loading_spinner: true,
+    });
+
+    if (currently_deleting_messages.includes(msg_id)) {
+        confirm_dialog.show_confirm_dialog_spinner();
+    } else {
+        confirm_dialog.hide_confirm_dialog_spinner();
+    }
 }
 
 export function delete_topic(stream_id, topic_name) {
