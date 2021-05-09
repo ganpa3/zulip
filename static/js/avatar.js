@@ -106,6 +106,7 @@ export function build_user_avatar_widget(upload_function) {
             html_yes_button: $t_html({defaultMessage: "Confirm"}),
             on_click: delete_user_avatar,
             fade: true,
+            loading_spinner: false,
         });
     });
 

@@ -252,6 +252,7 @@ export function set_up() {
                     html_yes_button: $t_html({defaultMessage: "Yes"}),
                     on_click: submit_custom_emoji_request,
                     fade: true,
+                    loading_spinner: false,
                 });
             } else {
                 submit_custom_emoji_request();

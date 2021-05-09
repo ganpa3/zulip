@@ -985,6 +985,7 @@ export function unsubscribe_from_private_stream(sub, from_stream_popover) {
         html_yes_button: $t_html({defaultMessage: "Confirm"}),
         on_click: unsubscribe_from_stream,
         fade: true,
+        loading_spinner: false,
     });
 }
 

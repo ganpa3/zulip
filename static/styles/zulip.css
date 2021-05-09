@@ -2335,8 +2335,13 @@ div.topic_edit_spinner .loading_indicator_spinner {
     height: 20px;
 }
 
+#confirm_dialog_spinner {
+    width: 0;
+    height: 0;
+}
+
 .topic_move_spinner,
-#do_delete_message_spinner {
+#confirm_dialog_spinner {
     margin: 0 auto;
 }
 

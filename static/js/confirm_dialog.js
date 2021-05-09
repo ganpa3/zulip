@@ -3,6 +3,7 @@ import $ from "jquery";
 import render_confirm_dialog from "../templates/confirm_dialog.hbs";
 
 import * as blueslip from "./blueslip";
+import * as loading from "./loading";
 import * as overlays from "./overlays";
 
 /*
@@ -28,7 +29,21 @@ import * as overlays from "./overlays";
            only ever have one confirm dialog active at any
            time.
 
+        6) The loading spinner, if required, must be handled by the
+           caller.
 */
+
+export function hide_confirm_dialog_spinner() {
+    const spinner = $("#confirm_dialog_spinner");
+    loading.destroy_indicator(spinner);
+    $("#confirm_dialog_modal > div.modal-footer > button").show();
+}
+
+export function show_confirm_dialog_spinner() {
+    const spinner = $("#confirm_dialog_spinner");
+    $("#confirm_dialog_modal > div.modal-footer > button").hide();
+    loading.make_indicator(spinner, {abs_positioned: true});
+}
 
 export function launch(conf) {
     const html = render_confirm_dialog({fade: conf.fade});
@@ -42,12 +57,13 @@ export function launch(conf) {
         "html_heading",
         "html_body",
         "html_yes_button",
+        "loading_spinner",
         "on_click",
         "parent",
     ];
 
     for (const f of conf_fields) {
-        if (!conf[f]) {
+        if (conf[f] === undefined) {
             blueslip.error("programmer omitted " + f);
         }
     }
@@ -69,7 +85,9 @@ export function launch(conf) {
 
     // Set up handlers.
     yes_button.on("click", () => {
-        overlays.close_modal("#confirm_dialog_modal");
+        if (!conf.loading_spinner) {
+            overlays.close_modal("#confirm_dialog_modal");
+        }
         conf.on_click();
     });
 
