@@ -49,7 +49,7 @@ a proxy to access the internet.)
 - **All**: 2GB available RAM, Active broadband internet connection, [GitHub account][set-up-git].
 - **macOS**: macOS (10.11 El Capitan or newer recommended)
 - **Ubuntu LTS**: 20.04 or 18.04
-  - or **Debian**: 10 "buster"
+  - or **Debian**: 10 "buster" or 11 "bullseye"
 - **Windows**: Windows 64-bit (Win 10 recommended), hardware
   virtualization enabled (VT-x or AMD-V), administrator access.
 
@@ -80,6 +80,8 @@ Jump to:
 
 #### macOS
 
+##### Intel
+
 1. Install [Vagrant][vagrant-dl] (latest).
 2. Install [VirtualBox][vbox-dl] (latest).
 
@@ -89,6 +91,12 @@ plugin][vagrant-vmware-fusion-dl] or [Parallels Desktop][parallels-desktop-dl] a
 a provider for Vagrant.)
 
 Now you are ready for [Step 2: Get Zulip code](#step-2-get-zulip-code).
+
+##### Apple Silicon
+
+The setup for Apple Silicon (e.g. M1) Macs is very similar to that [for Intel
+above](#intel), except that VirtualBox is not supported. Instead you can use [Docker for
+Mac](https://docs.docker.com/docker-for-mac/install/).
 
 #### Ubuntu
 
@@ -156,7 +164,7 @@ Debian](https://docs.docker.com/install/linux/docker-ce/debian/).
 
 ```eval_rst
 .. note::
-    We now recommend using `WSL 2 for Windows development <../development/setup-advanced.html#installing-directly-on-windows-10-experimental>`_.
+    We recommend using `WSL 2 for Windows development <../development/setup-advanced.html#installing-directly-on-windows-10-with-wsl-2>`_.
 ```
 
 1. Install [Git for Windows][git-bash], which installs *Git BASH*.
@@ -277,12 +285,12 @@ Change into the zulip directory and tell vagrant to start the Zulip
 development environment with `vagrant up`:
 
 ```
-# On Windows or macOS:
+# On Windows or macOS (Intel):
 cd zulip
 vagrant plugin install vagrant-vbguest
 vagrant up --provider=virtualbox
 
-# On Linux:
+# On Linux or macOS (Apple Silicon):
 cd zulip
 vagrant up --provider=docker
 ```
@@ -308,7 +316,7 @@ provisioning if your Internet connection is unreliable.  To retry, you
 can use `vagrant provision` (`vagrant up` will just boot the guest
 without provisioning after the first time).  Other common issues are
 documented in the
-[Troubleshooting and Common Errors](#troubleshooting-and-common-errors)
+[Troubleshooting and common errors](#troubleshooting-and-common-errors)
 section.  If that doesn't help, please visit
 [#provision help](https://chat.zulip.org/#narrow/stream/21-provision-help)
 in the [Zulip development community server](../contributing/chat-zulip-org.md) for
@@ -432,7 +440,7 @@ running Git commands in Terminal (macOS/Ubuntu) or Git BASH (Windows) in the
 directory where you cloned Zulip on your main machine.
 
 If you're new to working with Git/GitHub, check out our [Git & GitHub
-Guide][rtd-git-guide].
+guide][rtd-git-guide].
 
 #### Maintaining the development environment
 
@@ -533,7 +541,7 @@ $ ./tools/run-dev.py
 
 Next, read the following to learn more about developing for Zulip:
 
-* [Git & GitHub Guide][rtd-git-guide]
+* [Git & GitHub guide][rtd-git-guide]
 * [Using the development environment][rtd-using-dev-env]
 * [Testing][rtd-testing] (and [Configuring CI][ci] to
 run the full test suite against any branches you push to your fork,

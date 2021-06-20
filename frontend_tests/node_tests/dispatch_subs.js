@@ -2,10 +2,11 @@
 
 const {strict: assert} = require("assert");
 
-const {mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
+const {mock_esm, zrequire} = require("../zjsunit/namespace");
 const {make_stub} = require("../zjsunit/stub");
 const {run_test} = require("../zjsunit/test");
 const blueslip = require("../zjsunit/zblueslip");
+const {page_params} = require("../zjsunit/zpage_params");
 
 const events = require("./lib/events");
 
@@ -13,15 +14,15 @@ const event_fixtures = events.fixtures;
 const test_user = events.test_user;
 
 const compose_fade = mock_esm("../../static/js/compose_fade");
+const message_lists = mock_esm("../../static/js/message_lists");
 const narrow_state = mock_esm("../../static/js/narrow_state");
 const overlays = mock_esm("../../static/js/overlays");
-const page_params = set_global("page_params", {});
 const settings_org = mock_esm("../../static/js/settings_org");
 const settings_streams = mock_esm("../../static/js/settings_streams");
 const stream_events = mock_esm("../../static/js/stream_events");
 const stream_list = mock_esm("../../static/js/stream_list");
 const subs = mock_esm("../../static/js/subs");
-set_global("current_msg_list", {});
+message_lists.current = {};
 
 const peer_data = zrequire("peer_data");
 const people = zrequire("people");
@@ -43,13 +44,13 @@ people.initialize_current_user(me.user_id);
 const dispatch = server_events_dispatch.dispatch_normal_event;
 
 function test(label, f) {
-    run_test(label, (override) => {
+    run_test(label, ({override}) => {
         stream_data.clear_subscriptions();
-        f(override);
+        f({override});
     });
 }
 
-test("add", (override) => {
+test("add", ({override}) => {
     const event = event_fixtures.subscription__add;
 
     const sub = event.subscriptions[0];
@@ -69,7 +70,7 @@ test("add", (override) => {
     assert.deepEqual(args.subscribers, event.subscriptions[0].subscribers);
 });
 
-test("peer add/remove", (override) => {
+test("peer add/remove", ({override}) => {
     let event = event_fixtures.subscription__peer_add;
 
     stream_data.add_sub({
@@ -87,17 +88,17 @@ test("peer add/remove", (override) => {
     assert.equal(compose_fade_stub.num_calls, 1);
     assert.equal(subs_stub.num_calls, 1);
 
-    assert(peer_data.is_user_subscribed(event.stream_ids[0], event.user_ids[0]));
+    assert.ok(peer_data.is_user_subscribed(event.stream_ids[0], event.user_ids[0]));
 
     event = event_fixtures.subscription__peer_remove;
     dispatch(event);
     assert.equal(compose_fade_stub.num_calls, 2);
     assert.equal(subs_stub.num_calls, 2);
 
-    assert(!peer_data.is_user_subscribed(event.stream_ids[0], event.user_ids[0]));
+    assert.ok(!peer_data.is_user_subscribed(event.stream_ids[0], event.user_ids[0]));
 });
 
-test("remove", (override) => {
+test("remove", ({override}) => {
     const event = event_fixtures.subscription__remove;
     const event_sub = event.subscriptions[0];
     const stream_id = event_sub.stream_id;
@@ -117,7 +118,7 @@ test("remove", (override) => {
     assert.deepEqual(args.sub, sub);
 });
 
-test("update", (override) => {
+test("update", ({override}) => {
     const event = event_fixtures.subscription__update;
 
     const stub = make_stub();
@@ -139,7 +140,7 @@ test("add error handling", () => {
     blueslip.reset();
 });
 
-test("peer event error handling (bad stream_ids/user_ids)", (override) => {
+test("peer event error handling (bad stream_ids/user_ids)", ({override}) => {
     override(compose_fade, "update_faded_users", () => {});
 
     const add_event = {
@@ -166,7 +167,7 @@ test("peer event error handling (bad stream_ids/user_ids)", (override) => {
     dispatch(remove_event);
 });
 
-test("stream update", (override) => {
+test("stream update", ({override}) => {
     const event = event_fixtures.stream__update;
 
     const stub = make_stub();
@@ -180,13 +181,11 @@ test("stream update", (override) => {
     assert.equal(args.value, event.value);
 });
 
-test("stream create", (override) => {
+test("stream create", ({override}) => {
     const event = event_fixtures.stream__create;
 
     const stub = make_stub();
     override(stream_data, "create_streams", stub.f);
-    override(stream_data, "get_sub_by_id", noop);
-    override(stream_data, "update_calculated_fields", noop);
     override(subs, "add_sub_to_table", noop);
     override(overlays, "streams_open", () => true);
     dispatch(event);
@@ -198,7 +197,7 @@ test("stream create", (override) => {
     );
 });
 
-test("stream delete (normal)", (override) => {
+test("stream delete (normal)", ({override}) => {
     const event = event_fixtures.stream__delete;
 
     for (const stream of event.streams) {
@@ -213,7 +212,7 @@ test("stream delete (normal)", (override) => {
     narrow_state.is_for_stream_id = () => true;
 
     let bookend_updates = 0;
-    override(current_msg_list, "update_trailing_bookend", () => {
+    override(message_lists.current, "update_trailing_bookend", () => {
         bookend_updates += 1;
     });
 
@@ -239,7 +238,7 @@ test("stream delete (normal)", (override) => {
     assert.equal(removed_sidebar_rows, 1);
 });
 
-test("stream delete (special streams)", (override) => {
+test("stream delete (special streams)", ({override}) => {
     const event = event_fixtures.stream__delete;
 
     for (const stream of event.streams) {
@@ -254,7 +253,7 @@ test("stream delete (special streams)", (override) => {
     override(subs, "remove_stream", noop);
     override(settings_org, "sync_realm_settings", noop);
     override(settings_streams, "update_default_streams_table", noop);
-    override(current_msg_list, "update_trailing_bookend", noop);
+    override(message_lists.current, "update_trailing_bookend", noop);
     override(stream_list, "remove_sidebar_row", noop);
 
     dispatch(event);

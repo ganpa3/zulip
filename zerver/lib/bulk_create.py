@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Collection, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from django.db.models import Model
 
@@ -84,9 +84,13 @@ def bulk_create_users(
         recipients_by_user_id[recipient.type_id] = recipient
 
     subscriptions_to_create: List[Subscription] = []
-    for user_id in user_ids:
-        recipient = recipients_by_user_id[user_id]
-        subscription = Subscription(user_profile_id=user_id, recipient=recipient)
+    for user_profile in profiles_to_create:
+        recipient = recipients_by_user_id[user_profile.id]
+        subscription = Subscription(
+            user_profile_id=user_profile.id,
+            recipient=recipient,
+            is_user_active=user_profile.is_active,
+        )
         subscriptions_to_create.append(subscription)
 
     Subscription.objects.bulk_create(subscriptions_to_create)
@@ -94,7 +98,7 @@ def bulk_create_users(
 
 def bulk_set_users_or_streams_recipient_fields(
     model: Model,
-    objects: Union[Iterable[UserProfile], Iterable[Stream]],
+    objects: Union[Collection[UserProfile], Collection[Stream]],
     recipients: Optional[Iterable[Recipient]] = None,
 ) -> None:
     assert model in [UserProfile, Stream]

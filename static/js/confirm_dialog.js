@@ -1,8 +1,10 @@
 import $ from "jquery";
 
 import render_confirm_dialog from "../templates/confirm_dialog.hbs";
+import render_confirm_dialog_heading from "../templates/confirm_dialog_heading.hbs";
 
 import * as blueslip from "./blueslip";
+import * as loading from "./loading";
 import * as overlays from "./overlays";
 
 /*
@@ -28,10 +30,26 @@ import * as overlays from "./overlays";
            only ever have one confirm dialog active at any
            time.
 
+        6) If a modal wants a loading spinner, it should pass loading_spinner: true.
+           This will show a loading spinner when the yes button is clicked.
+           The caller is responsible for calling hide_confirm_dialog_spinner()
+           to hide the spinner in both success and error handlers.
 */
 
+export function hide_confirm_dialog_spinner() {
+    const spinner = $("#confirm_dialog_spinner");
+    loading.destroy_indicator(spinner);
+    $("#confirm_dialog_modal > div.modal-footer > button").show();
+}
+
+export function show_confirm_dialog_spinner() {
+    const spinner = $("#confirm_dialog_spinner");
+    $("#confirm_dialog_modal > div.modal-footer > button").hide();
+    loading.make_indicator(spinner);
+}
+
 export function launch(conf) {
-    const html = render_confirm_dialog();
+    const html = render_confirm_dialog({fade: conf.fade});
     const confirm_dialog = $(html);
 
     const conf_fields = [
@@ -46,7 +64,7 @@ export function launch(conf) {
     ];
 
     for (const f of conf_fields) {
-        if (!conf[f]) {
+        if (conf[f] === undefined) {
             blueslip.error("programmer omitted " + f);
         }
     }
@@ -59,8 +77,13 @@ export function launch(conf) {
         overlays.close_modal("#confirm_dialog_modal");
     }
 
-    confirm_dialog.find(".confirm_dialog_heading").html(conf.html_heading);
-    confirm_dialog.find(".confirm_dialog_body").html(conf.html_body);
+    confirm_dialog.find(".confirm_dialog_heading").html(
+        render_confirm_dialog_heading({
+            heading_text: conf.html_heading,
+            link: conf.help_link,
+        }),
+    );
+    confirm_dialog.find(".confirm_dialog_body").prepend(conf.html_body);
 
     const yes_button = confirm_dialog.find(".confirm_dialog_yes_button");
 
@@ -68,7 +91,11 @@ export function launch(conf) {
 
     // Set up handlers.
     yes_button.on("click", () => {
-        overlays.close_modal("#confirm_dialog_modal");
+        if (conf.loading_spinner) {
+            show_confirm_dialog_spinner();
+        } else {
+            overlays.close_modal("#confirm_dialog_modal");
+        }
         conf.on_click();
     });
 
@@ -78,4 +105,8 @@ export function launch(conf) {
 
     // Open the modal
     overlays.open_modal("#confirm_dialog_modal");
+
+    conf.parent.on("shown.bs.modal", () => {
+        yes_button.trigger("focus");
+    });
 }

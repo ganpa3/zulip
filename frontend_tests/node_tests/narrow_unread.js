@@ -2,14 +2,13 @@
 
 const {strict: assert} = require("assert");
 
-const {mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
+const {mock_esm, zrequire} = require("../zjsunit/namespace");
 const {run_test} = require("../zjsunit/test");
 const blueslip = require("../zjsunit/zblueslip");
 
 mock_esm("../../static/js/muting", {
     is_topic_muted: () => false,
 });
-set_global("page_params", {});
 
 const {Filter} = zrequire("../js/filter");
 const message_store = zrequire("message_store");
@@ -50,7 +49,7 @@ run_test("get_unread_ids", () => {
     let terms;
 
     const sub = {
-        name: "My Stream",
+        name: "My stream",
         stream_id: 55,
     };
 
@@ -71,8 +70,8 @@ run_test("get_unread_ids", () => {
         display_recipient: [{id: alice.user_id}],
     };
 
-    message_store.create_mock_message(stream_msg);
-    message_store.create_mock_message(private_msg);
+    message_store.update_message_cache(stream_msg);
+    message_store.update_message_cache(private_msg);
 
     stream_data.add_sub(sub);
 
@@ -192,7 +191,7 @@ run_test("get_unread_ids", () => {
     });
 });
 
-run_test("defensive code", (override) => {
+run_test("defensive code", ({override}) => {
     // Test defensive code.  We actually avoid calling
     // _possible_unread_message_ids for any case where we
     // couldn't compute the unread message ids, but that

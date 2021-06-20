@@ -1,14 +1,14 @@
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Collection, List, Optional, Set, Tuple, Union
 
-from django.conf import settings
 from django.db.models.query import QuerySet
 from django.utils.timezone import now as timezone_now
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from typing_extensions import TypedDict
 
 from zerver.lib.exceptions import StreamAdministratorRequired
 from zerver.lib.markdown import markdown_convert
 from zerver.lib.request import JsonableError
+from zerver.lib.stream_subscription import get_active_subscriptions_for_stream_id
 from zerver.models import (
     DefaultStreamGroup,
     Realm,
@@ -33,6 +33,7 @@ class StreamDict(TypedDict, total=False):
 
         - we use it to create a stream
         - we use it to specify a stream
+
 
     It's possible we want a smaller type to use
     for removing streams, but it would complicate
@@ -189,26 +190,60 @@ def subscribed_to_stream(user_profile: UserProfile, stream_id: int) -> bool:
     ).exists()
 
 
+def check_stream_access_based_on_stream_post_policy(sender: UserProfile, stream: Stream) -> None:
+    if sender.is_realm_admin or is_cross_realm_bot_email(sender.delivery_email):
+        pass
+    elif stream.stream_post_policy == Stream.STREAM_POST_POLICY_ADMINS:
+        raise JsonableError(_("Only organization administrators can send to this stream."))
+    elif (
+        stream.stream_post_policy == Stream.STREAM_POST_POLICY_MODERATORS
+        and not sender.is_moderator
+    ):
+        raise JsonableError(
+            _("Only organization administrators and moderators can send to this stream.")
+        )
+    elif stream.stream_post_policy != Stream.STREAM_POST_POLICY_EVERYONE and sender.is_guest:
+        raise JsonableError(_("Guests cannot send to this stream."))
+    elif (
+        stream.stream_post_policy == Stream.STREAM_POST_POLICY_RESTRICT_NEW_MEMBERS
+        and sender.is_provisional_member
+    ):
+        raise JsonableError(_("New members cannot send to this stream."))
+    return
+
+
 def access_stream_for_send_message(
     sender: UserProfile, stream: Stream, forwarder_user_profile: Optional[UserProfile]
 ) -> None:
     # Our caller is responsible for making sure that `stream` actually
     # matches the realm of the sender.
+    try:
+        check_stream_access_based_on_stream_post_policy(sender, stream)
+    except JsonableError as e:
+        if sender.is_bot and sender.bot_owner is not None:
+            check_stream_access_based_on_stream_post_policy(sender.bot_owner, stream)
+        else:
+            raise JsonableError(e.msg)
 
-    # Organization admins can send to any stream, irrespective of the stream_post_policy value.
-    if sender.is_realm_admin or is_cross_realm_bot_email(sender.delivery_email):
-        pass
-    elif sender.is_bot and (sender.bot_owner is not None and sender.bot_owner.is_realm_admin):
-        pass
-    elif stream.stream_post_policy == Stream.STREAM_POST_POLICY_ADMINS:
-        raise JsonableError(_("Only organization administrators can send to this stream."))
-    elif stream.stream_post_policy != Stream.STREAM_POST_POLICY_EVERYONE and sender.is_guest:
-        raise JsonableError(_("Guests cannot send to this stream."))
-    elif stream.stream_post_policy == Stream.STREAM_POST_POLICY_RESTRICT_NEW_MEMBERS:
-        if sender.is_bot and (sender.bot_owner is None or sender.bot_owner.is_provisional_member):
-            raise JsonableError(_("New members cannot send to this stream."))
-        elif not sender.is_bot and sender.is_provisional_member:
-            raise JsonableError(_("New members cannot send to this stream."))
+    # forwarder_user_profile cases should be analyzed first, as incorrect
+    # message forging is cause for denying access regardless of any other factors.
+    if forwarder_user_profile is not None and forwarder_user_profile != sender:
+        if (
+            forwarder_user_profile.can_forge_sender
+            and forwarder_user_profile.realm_id == sender.realm_id
+            and sender.realm_id == stream.realm_id
+        ):
+            return
+        else:
+            raise JsonableError(_("User not authorized for this query"))
+
+    if is_cross_realm_bot_email(sender.delivery_email):
+        return
+
+    if stream.realm_id != sender.realm_id:
+        # Sending to other realm's streams is always disallowed,
+        # with the exception of cross-realm bots.
+        raise JsonableError(_("User not authorized for this query"))
 
     if stream.is_web_public:
         # Even guest users can write to web-public streams.
@@ -223,22 +258,13 @@ def access_stream_for_send_message(
         return
 
     if sender.can_forge_sender:
-        return
-
-    if forwarder_user_profile is not None and forwarder_user_profile.can_forge_sender:
+        # can_forge_sender allows sending to any stream in the realm.
         return
 
     if sender.is_bot and (
         sender.bot_owner is not None and subscribed_to_stream(sender.bot_owner, stream.id)
     ):
         # Bots can send to any stream their owner can.
-        return
-
-    if sender.delivery_email == settings.WELCOME_BOT:
-        # The welcome bot welcomes folks to the stream.
-        return
-
-    if sender.delivery_email == settings.NOTIFICATION_BOT:
         return
 
     # All other cases are an error.
@@ -308,7 +334,8 @@ def access_stream_common(
 
     # First, we don't allow any access to streams in other realms.
     if stream.realm_id != user_profile.realm_id:
-        raise JsonableError(error)
+        # Callers should verify this on their own, so this functions as defensive code.
+        raise AssertionError("user_profile and stream realms don't match")
 
     try:
         sub = Subscription.objects.get(
@@ -347,9 +374,12 @@ def access_stream_by_id(
     require_active: bool = True,
     allow_realm_admin: bool = False,
 ) -> Tuple[Stream, Optional[Subscription]]:
-    stream = get_stream_by_id(stream_id)
-
     error = _("Invalid stream id")
+    try:
+        stream = get_stream_by_id_in_realm(stream_id, user_profile.realm)
+    except Stream.DoesNotExist:
+        raise JsonableError(error)
+
     sub = access_stream_common(
         user_profile,
         stream,
@@ -375,15 +405,6 @@ def get_web_public_streams_queryset(realm: Realm) -> "QuerySet[Stream]":
         history_public_to_subscribers=True,
         is_web_public=True,
     )
-
-
-def get_stream_by_id(stream_id: int) -> Stream:
-    error = _("Invalid stream id")
-    try:
-        stream = Stream.objects.get(id=stream_id)
-    except Stream.DoesNotExist:
-        raise JsonableError(error)
-    return stream
 
 
 def check_stream_name_available(realm: Realm, name: str) -> None:
@@ -458,6 +479,38 @@ def access_stream_for_unmute_topic_by_id(
     return stream
 
 
+def private_stream_user_ids(stream_id: int) -> Set[int]:
+    subscriptions = get_active_subscriptions_for_stream_id(
+        stream_id, include_deactivated_users=False
+    )
+    return {sub["user_profile_id"] for sub in subscriptions.values("user_profile_id")}
+
+
+def public_stream_user_ids(stream: Stream) -> Set[int]:
+    guest_subscriptions = get_active_subscriptions_for_stream_id(
+        stream.id, include_deactivated_users=False
+    ).filter(user_profile__role=UserProfile.ROLE_GUEST)
+    guest_subscriptions = {
+        sub["user_profile_id"] for sub in guest_subscriptions.values("user_profile_id")
+    }
+    return set(active_non_guest_user_ids(stream.realm_id)) | guest_subscriptions
+
+
+def can_access_stream_user_ids(stream: Stream) -> Set[int]:
+    # return user ids of users who can access the attributes of a
+    # stream, such as its name/description.  Useful for sending events
+    # to all users with access to a stream's attributes.
+    if stream.is_public():
+        # For a public stream, this is everyone in the realm
+        # except unsubscribed guest users
+        return public_stream_user_ids(stream)
+    else:
+        # for a private stream, it's subscribers plus realm admins.
+        return private_stream_user_ids(stream.id) | {
+            user.id for user in stream.realm.get_admin_users_and_bots()
+        }
+
+
 def can_access_stream_history(user_profile: UserProfile, stream: Stream) -> bool:
     """Determine whether the provided user is allowed to access the
     history of the target stream.  The stream is specified by name.
@@ -474,6 +527,10 @@ def can_access_stream_history(user_profile: UserProfile, stream: Stream) -> bool
     access_stream is being called elsewhere to confirm that the user
     can actually see this stream.
     """
+
+    if user_profile.realm_id != stream.realm_id:
+        raise AssertionError("user_profile and stream realms don't match")
+
     if stream.is_web_public:
         return True
 
@@ -508,7 +565,7 @@ def can_access_stream_history_by_id(user_profile: UserProfile, stream_id: int) -
 
 
 def filter_stream_authorization(
-    user_profile: UserProfile, streams: Iterable[Stream]
+    user_profile: UserProfile, streams: Collection[Stream]
 ) -> Tuple[List[Stream], List[Stream]]:
     recipient_ids = [stream.recipient_id for stream in streams]
     subscribed_recipient_ids = set(
@@ -542,7 +599,7 @@ def filter_stream_authorization(
 
 
 def list_to_streams(
-    streams_raw: Iterable[StreamDict],
+    streams_raw: Collection[StreamDict],
     user_profile: UserProfile,
     autocreate: bool = False,
     admin_access_required: bool = False,
@@ -602,11 +659,9 @@ def list_to_streams(
     else:
         # autocreate=True path starts here
         if not user_profile.can_create_streams():
-            if user_profile.realm.create_stream_policy == Realm.POLICY_ADMINS_ONLY:
-                raise JsonableError(_("Only administrators can create streams."))
-            if user_profile.realm.create_stream_policy == Realm.POLICY_FULL_MEMBERS_ONLY:
-                raise JsonableError(_("Your account is too new to create streams."))
-            raise JsonableError(_("Not allowed for guest users"))
+            # Guest users case will not be handled here as it will be
+            # handled by the decorator in add_subscriptions_backend.
+            raise JsonableError(_("Insufficient permission"))
         elif not autocreate:
             raise JsonableError(
                 _("Stream(s) ({}) do not exist").format(

@@ -10,6 +10,7 @@ import * as compose from "./compose";
 import * as gear_menu from "./gear_menu";
 import * as message_live_update from "./message_live_update";
 import * as narrow_state from "./narrow_state";
+import {page_params} from "./page_params";
 import * as people from "./people";
 import * as pm_list from "./pm_list";
 import * as settings_account from "./settings_account";
@@ -65,10 +66,12 @@ export const update_person = function update(person) {
     }
 
     if (Object.prototype.hasOwnProperty.call(person, "role")) {
+        person_obj.role = person.role;
         person_obj.is_owner = person.role === settings_config.user_role_values.owner.code;
         person_obj.is_admin =
             person.role === settings_config.user_role_values.admin.code || person_obj.is_owner;
         person_obj.is_guest = person.role === settings_config.user_role_values.guest.code;
+        person_obj.is_moderator = person.role === settings_config.user_role_values.moderator.code;
         settings_users.update_user_data(person.user_id, person);
 
         if (people.is_my_user_id(person.user_id) && page_params.is_owner !== person_obj.is_owner) {
@@ -83,6 +86,20 @@ export const update_person = function update(person) {
             settings_org.maybe_disable_widgets();
             settings_profile_fields.maybe_disable_widgets();
             settings_streams.maybe_disable_widgets();
+        }
+
+        if (
+            people.is_my_user_id(person.user_id) &&
+            page_params.is_moderator !== person_obj.is_moderator
+        ) {
+            page_params.is_moderator = person_obj.is_moderator;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(person, "is_billing_admin")) {
+        person_obj.is_billing_admin = person.is_billing_admin;
+        if (people.is_my_user_id(person.user_id)) {
+            page_params.is_billing_admin = person_obj.is_billing_admin;
         }
     }
 

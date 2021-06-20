@@ -5,10 +5,14 @@ import * as blueslip from "./blueslip";
 import * as compose from "./compose";
 import * as compose_actions from "./compose_actions";
 import * as compose_state from "./compose_state";
+import {csrf_token} from "./csrf";
+import * as hash_util from "./hash_util";
 import * as hashchange from "./hashchange";
 import {localstorage} from "./localstorage";
 import * as message_list from "./message_list";
+import * as message_lists from "./message_lists";
 import * as narrow_state from "./narrow_state";
+import {page_params} from "./page_params";
 import * as reload_state from "./reload_state";
 import * as server_events from "./server_events";
 import * as ui_report from "./ui_report";
@@ -29,9 +33,6 @@ function preserve_state(send_after_reload, save_pointer, save_narrow, save_compo
         return;
     }
 
-    if (send_after_reload === undefined) {
-        send_after_reload = 0;
-    }
     let url = "#reload:send_after_reload=" + Number(send_after_reload);
     url += "+csrf_token=" + encodeURIComponent(csrf_token);
 
@@ -52,20 +53,20 @@ function preserve_state(send_after_reload, save_pointer, save_narrow, save_compo
     }
 
     if (save_pointer) {
-        const pointer = home_msg_list.selected_id();
+        const pointer = message_lists.home.selected_id();
         if (pointer !== -1) {
             url += "+pointer=" + pointer;
         }
     }
 
     if (save_narrow) {
-        const row = home_msg_list.selected_row();
+        const row = message_lists.home.selected_row();
         if (!narrow_state.active()) {
             if (row.length > 0) {
                 url += "+offset=" + row.offset().top;
             }
         } else {
-            url += "+offset=" + home_msg_list.pre_narrow_offset;
+            url += "+offset=" + message_lists.home.pre_narrow_offset;
 
             const narrow_pointer = message_list.narrowed.selected_id();
             if (narrow_pointer !== -1) {
@@ -78,11 +79,7 @@ function preserve_state(send_after_reload, save_pointer, save_narrow, save_compo
         }
     }
 
-    let oldhash = window.location.hash;
-    if (oldhash.length !== 0 && oldhash[0] === "#") {
-        oldhash = oldhash.slice(1);
-    }
-    url += "+oldhash=" + encodeURIComponent(oldhash);
+    url += hash_util.build_reload_url();
 
     const ls = localstorage();
     // Delete all the previous preserved states.
@@ -184,7 +181,7 @@ export function initialize() {
     hashchange.changehash(vars.oldhash);
 }
 
-function do_reload_app(send_after_reload, save_pointer, save_narrow, save_compose, message) {
+function do_reload_app(send_after_reload, save_pointer, save_narrow, save_compose, message_html) {
     if (reload_state.is_in_progress()) {
         blueslip.log("do_reload_app: Doing nothing since reload_in_progress");
         return;
@@ -199,12 +196,8 @@ function do_reload_app(send_after_reload, save_pointer, save_narrow, save_compos
         }
     }
 
-    if (message === undefined) {
-        message = "Reloading ...";
-    }
-
     // TODO: We need a better API for showing messages.
-    ui_report.message(message, $("#reloading-application"));
+    ui_report.message(message_html, $("#reloading-application"));
     blueslip.log("Starting server requested page reload");
     reload_state.set_state_to_in_progress();
 
@@ -226,38 +219,22 @@ function do_reload_app(send_after_reload, save_pointer, save_narrow, save_compos
     try {
         server_events.cleanup_event_queue();
     } catch (error) {
-        blueslip.error("Failed to cleanup before reloading", undefined, error.stack);
+        blueslip.error("Failed to clean up before reloading", undefined, error.stack);
     }
 
     window.location.reload(true);
 }
 
-export function initiate(options) {
-    options = {
-        immediate: false,
-        save_pointer: true,
-        save_narrow: true,
-        save_compose: true,
-        send_after_reload: false,
-        ...options,
-    };
-
-    if (
-        options.save_pointer === undefined ||
-        options.save_narrow === undefined ||
-        options.save_compose === undefined
-    ) {
-        blueslip.error("reload.initiate() called without explicit save options.");
-    }
-
-    if (options.immediate) {
-        do_reload_app(
-            options.send_after_reload,
-            options.save_pointer,
-            options.save_narrow,
-            options.save_compose,
-            options.message,
-        );
+export function initiate({
+    immediate = false,
+    save_pointer = true,
+    save_narrow = true,
+    save_compose = true,
+    send_after_reload = false,
+    message_html = "Reloading ...",
+}) {
+    if (immediate) {
+        do_reload_app(send_after_reload, save_pointer, save_narrow, save_compose, message_html);
     }
 
     if (reload_state.is_pending()) {
@@ -266,7 +243,7 @@ export function initiate(options) {
     reload_state.set_state_to_pending();
 
     // We're now planning to execute a reload of the browser, usually
-    // to get an updated version of the Zulip webapp code.  Because in
+    // to get an updated version of the Zulip web app code.  Because in
     // most cases all browsers will be receiving this notice at the
     // same or similar times, we need to randomize the time that we do
     // this in order to avoid a thundering herd overloading the server.
@@ -294,13 +271,7 @@ export function initiate(options) {
     let compose_started_handler;
 
     function reload_from_idle() {
-        do_reload_app(
-            false,
-            options.save_pointer,
-            options.save_narrow,
-            options.save_compose,
-            options.message,
-        );
+        do_reload_app(false, save_pointer, save_narrow, save_compose, message_html);
     }
 
     // Make sure we always do a reload eventually after

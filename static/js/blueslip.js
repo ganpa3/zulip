@@ -9,6 +9,7 @@
 import $ from "jquery";
 
 import * as blueslip_stacktrace from "./blueslip_stacktrace";
+import {page_params} from "./page_params";
 import * as ui_report from "./ui_report";
 
 if (Error.stackTraceLimit !== undefined) {
@@ -75,14 +76,12 @@ export function get_log() {
 const reported_errors = new Set();
 const last_report_attempt = new Map();
 
-function report_error(msg, stack, opts) {
-    opts = {show_ui_msg: false, ...opts};
-
-    if (stack === undefined) {
-        stack = "No stacktrace available";
-    }
-
-    if (page_params.debug_mode) {
+function report_error(
+    msg,
+    stack = "No stacktrace available",
+    {show_ui_msg = false, more_info} = {},
+) {
+    if (page_params.development_environment) {
         // In development, we display blueslip errors in the web UI,
         // to make them hard to miss.
         blueslip_stacktrace.display_stacktrace(msg, stack);
@@ -100,7 +99,7 @@ function report_error(msg, stack, opts) {
 
     last_report_attempt.set(key, Date.now());
 
-    // TODO: If an exception gets thrown before we setup ajax calls
+    // TODO: If an exception gets thrown before we set up ajax calls
     // to include the CSRF token, our ajax call will fail.  The
     // elegant thing to do in that case is to either wait until that
     // setup is done or do it ourselves and then retry.
@@ -114,8 +113,8 @@ function report_error(msg, stack, opts) {
         data: {
             message: msg,
             stacktrace: stack,
-            ui_message: opts.show_ui_msg,
-            more_info: JSON.stringify(opts.more_info),
+            ui_message: show_ui_msg,
+            more_info: JSON.stringify(more_info),
             href: window.location.href,
             user_agent: window.navigator.userAgent,
             log: logger.get_log().join("\n"),
@@ -123,7 +122,7 @@ function report_error(msg, stack, opts) {
         timeout: 3 * 1000,
         success() {
             reported_errors.add(key);
-            if (opts.show_ui_msg && ui_report !== undefined) {
+            if (show_ui_msg && ui_report !== undefined) {
                 // There are a few races here (and below in the error
                 // callback):
                 // 1) The ui_report module or something it requires might
@@ -153,7 +152,7 @@ function report_error(msg, stack, opts) {
             }
         },
         error() {
-            if (opts.show_ui_msg && ui_report !== undefined) {
+            if (show_ui_msg && ui_report !== undefined) {
                 ui_report.client_error(
                     "Oops.  It seems something has gone wrong. Please try reloading the page.",
                     $("#home-error"),
@@ -229,20 +228,17 @@ export function info(msg, more_info) {
 export function warn(msg, more_info) {
     const args = build_arg_list(msg, more_info);
     logger.warn(...args);
-    if (page_params.debug_mode) {
+    if (page_params.development_environment) {
         console.trace();
     }
 }
 
-export function error(msg, more_info, stack) {
-    if (stack === undefined) {
-        stack = new Error("dummy").stack;
-    }
+export function error(msg, more_info, stack = new Error("dummy").stack) {
     const args = build_arg_list(msg, more_info);
     logger.error(...args);
     report_error(msg, stack, {more_info});
 
-    if (page_params.debug_mode) {
+    if (page_params.development_environment) {
         throw new BlueslipError(msg, more_info);
     }
 

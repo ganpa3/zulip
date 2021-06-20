@@ -1,4 +1,4 @@
-# Remove a linkifier
+{generate_api_title(/realm/filters/{filter_id}:delete)}
 
 {generate_api_description(/realm/filters/{filter_id}:delete)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/realm/filters/{filter_id}:delete|example}
+
+{generate_code_example(javascript)|/realm/filters/{filter_id}:delete|example}
 
 {tab|curl}
 
@@ -23,6 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/filters/{filter_id}:delete|fixture(200)}
+
+{generate_code_example|/realm/filters/{filter_id}:delete|fixture(400)}

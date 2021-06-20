@@ -1,4 +1,4 @@
-# Create a custom profile field
+{generate_api_title(/realm/profile_fields:post)}
 
 {generate_api_description(/realm/profile_fields:post)}
 
@@ -7,7 +7,9 @@
 {start_tabs}
 {tab|python}
 
-{generate_code_example(python)|/realm/profile_fields:post|example(admin_config=True)}
+{generate_code_example(python)|/realm/profile_fields:post|example}
+
+{generate_code_example(javascript)|/realm/profile_fields:post|example}
 
 {tab|curl}
 
@@ -21,12 +23,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/realm/profile_fields:post}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/profile_fields:post|fixture(200)}
+
+{generate_code_example|/realm/profile_fields:post|fixture(400)}

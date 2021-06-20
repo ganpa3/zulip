@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Optional, Set
+from typing import Any, List, Mapping, Optional, Set
 from unittest import mock
 
 import orjson
@@ -15,6 +15,7 @@ from zerver.lib.actions import (
     build_message_send_dict,
     check_message,
     check_send_stream_message,
+    do_add_realm_domain,
     do_change_can_forge_sender,
     do_change_stream_post_policy,
     do_create_realm,
@@ -47,7 +48,6 @@ from zerver.lib.test_helpers import (
 )
 from zerver.lib.timestamp import convert_to_UTC, datetime_to_timestamp
 from zerver.models import (
-    MAX_MESSAGE_LENGTH,
     MAX_TOPIC_NAME_LENGTH,
     Message,
     Realm,
@@ -166,7 +166,7 @@ class MessagePOSTTest(ZulipTestCase):
 
     def test_sending_message_as_stream_post_policy_admins(self) -> None:
         """
-        Sending messages to streams which only the admins can create and post to.
+        Sending messages to streams which only the admins can post to.
         """
         admin_profile = self.example_user("iago")
         self.login_user(admin_profile)
@@ -204,6 +204,26 @@ class MessagePOSTTest(ZulipTestCase):
             "Only organization administrators can send to this stream.",
         )
 
+        moderator_profile = self.example_user("shiva")
+        self.login_user(moderator_profile)
+
+        # Moderators and their owned bots cannot send to STREAM_POST_POLICY_ADMINS streams
+        self._send_and_verify_message(
+            moderator_profile,
+            stream_name,
+            "Only organization administrators can send to this stream.",
+        )
+        moderator_owned_bot = self.create_test_bot(
+            short_name="whatever3",
+            full_name="whatever3",
+            user_profile=moderator_profile,
+        )
+        self._send_and_verify_message(
+            moderator_owned_bot,
+            stream_name,
+            "Only organization administrators can send to this stream.",
+        )
+
         # Bots without owner (except cross realm bot) cannot send to announcement only streams
         bot_without_owner = do_create_user(
             email="free-bot@zulip.testserver",
@@ -232,14 +252,96 @@ class MessagePOSTTest(ZulipTestCase):
             guest_profile, stream_name, "Only organization administrators can send to this stream."
         )
 
-    def test_sending_message_as_stream_post_policy_restrict_new_members(self) -> None:
+    def test_sending_message_as_stream_post_policy_moderators(self) -> None:
         """
-        Sending messages to streams which new members cannot create and post to.
+        Sending messages to streams which only the moderators can post to.
         """
         admin_profile = self.example_user("iago")
         self.login_user(admin_profile)
 
-        do_set_realm_property(admin_profile.realm, "waiting_period_threshold", 10)
+        stream_name = "Verona"
+        stream = get_stream(stream_name, admin_profile.realm)
+        do_change_stream_post_policy(stream, Stream.STREAM_POST_POLICY_MODERATORS)
+
+        # Admins and their owned bots can send to STREAM_POST_POLICY_MODERATORS streams
+        self._send_and_verify_message(admin_profile, stream_name)
+        admin_owned_bot = self.create_test_bot(
+            short_name="whatever1",
+            full_name="whatever1",
+            user_profile=admin_profile,
+        )
+        self._send_and_verify_message(admin_owned_bot, stream_name)
+
+        moderator_profile = self.example_user("shiva")
+        self.login_user(moderator_profile)
+
+        # Moderators and their owned bots can send to STREAM_POST_POLICY_MODERATORS streams
+        self._send_and_verify_message(moderator_profile, stream_name)
+        moderator_owned_bot = self.create_test_bot(
+            short_name="whatever2",
+            full_name="whatever2",
+            user_profile=moderator_profile,
+        )
+        self._send_and_verify_message(moderator_owned_bot, stream_name)
+
+        non_admin_profile = self.example_user("hamlet")
+        self.login_user(non_admin_profile)
+
+        # Members and their owned bots cannot send to STREAM_POST_POLICY_MODERATORS streams
+        self._send_and_verify_message(
+            non_admin_profile,
+            stream_name,
+            "Only organization administrators and moderators can send to this stream.",
+        )
+        non_admin_owned_bot = self.create_test_bot(
+            short_name="whatever3",
+            full_name="whatever3",
+            user_profile=non_admin_profile,
+        )
+        self._send_and_verify_message(
+            non_admin_owned_bot,
+            stream_name,
+            "Only organization administrators and moderators can send to this stream.",
+        )
+
+        # Bots without owner (except cross realm bot) cannot send to STREAM_POST_POLICY_MODERATORS streams.
+        bot_without_owner = do_create_user(
+            email="free-bot@zulip.testserver",
+            password="",
+            realm=non_admin_profile.realm,
+            full_name="freebot",
+            bot_type=UserProfile.DEFAULT_BOT,
+            acting_user=None,
+        )
+        self._send_and_verify_message(
+            bot_without_owner,
+            stream_name,
+            "Only organization administrators and moderators can send to this stream.",
+        )
+
+        # Cross realm bots should be allowed
+        notification_bot = get_system_bot("notification-bot@zulip.com")
+        internal_send_stream_message(
+            notification_bot, stream, "Test topic", "Test message by notification bot"
+        )
+        self.assertEqual(self.get_last_message().content, "Test message by notification bot")
+
+        guest_profile = self.example_user("polonius")
+        # Guests cannot send to non-STREAM_POST_POLICY_EVERYONE streams
+        self._send_and_verify_message(
+            guest_profile,
+            stream_name,
+            "Only organization administrators and moderators can send to this stream.",
+        )
+
+    def test_sending_message_as_stream_post_policy_restrict_new_members(self) -> None:
+        """
+        Sending messages to streams which new members cannot post to.
+        """
+        admin_profile = self.example_user("iago")
+        self.login_user(admin_profile)
+
+        do_set_realm_property(admin_profile.realm, "waiting_period_threshold", 10, acting_user=None)
         admin_profile.date_joined = timezone_now() - datetime.timedelta(days=9)
         admin_profile.save()
         self.assertTrue(admin_profile.is_provisional_member)
@@ -312,7 +414,7 @@ class MessagePOSTTest(ZulipTestCase):
         self.assertFalse(moderator_profile.is_provisional_member)
 
         # Moderators and their owned bots can send to STREAM_POST_POLICY_RESTRICT_NEW_MEMBERS
-        # streams, even if the admin is a new user
+        # streams, even if the moderator is a new user
         self._send_and_verify_message(moderator_profile, stream_name)
         moderator_owned_bot = self.create_test_bot(
             short_name="whatever3",
@@ -419,7 +521,7 @@ class MessagePOSTTest(ZulipTestCase):
         message_id = orjson.loads(result.content)["id"]
 
         recent_conversations = get_recent_private_conversations(user_profile)
-        self.assertEqual(len(recent_conversations), 1)
+        self.assert_length(recent_conversations, 1)
         recent_conversation = list(recent_conversations.values())[0]
         recipient_id = list(recent_conversations.keys())[0]
         self.assertEqual(set(recent_conversation["user_ids"]), {othello.id})
@@ -439,7 +541,7 @@ class MessagePOSTTest(ZulipTestCase):
         self_message_id = orjson.loads(result.content)["id"]
 
         recent_conversations = get_recent_private_conversations(user_profile)
-        self.assertEqual(len(recent_conversations), 2)
+        self.assert_length(recent_conversations, 2)
         recent_conversation = recent_conversations[recipient_id]
         self.assertEqual(set(recent_conversation["user_ids"]), {othello.id})
         self.assertEqual(recent_conversation["max_message_id"], message_id)
@@ -546,7 +648,7 @@ class MessagePOSTTest(ZulipTestCase):
         """
         othello = self.example_user("othello")
         cordelia = self.example_user("cordelia")
-        do_deactivate_user(othello)
+        do_deactivate_user(othello, acting_user=None)
         self.login("hamlet")
 
         result = self.client_post(
@@ -797,12 +899,14 @@ class MessagePOSTTest(ZulipTestCase):
         sent_message = self.get_last_message()
         self.assertEqual(sent_message.content, "  I like whitespace at the end!")
 
+    @override_settings(MAX_MESSAGE_LENGTH=25)
     def test_long_message(self) -> None:
         """
         Sending a message longer than the maximum message length succeeds but is
         truncated.
         """
         self.login("hamlet")
+        MAX_MESSAGE_LENGTH = settings.MAX_MESSAGE_LENGTH
         long_message = "A" * (MAX_MESSAGE_LENGTH + 1)
         post_data = {
             "type": "stream",
@@ -869,12 +973,10 @@ class MessagePOSTTest(ZulipTestCase):
         )
         self.assert_json_error(result, "User not authorized for this query")
 
-    def test_send_message_as_superuser_to_domain_that_dont_exist(self) -> None:
+    def test_send_message_with_can_forge_sender_to_different_domain(self) -> None:
         user = self.example_user("default_bot")
-        password = "test_password"
-        user.set_password(password)
-        user.can_forge_sender = True
-        user.save()
+        do_change_can_forge_sender(user, True)
+        # To a non-existing realm:
         result = self.api_post(
             user,
             "/api/v1/messages",
@@ -887,9 +989,52 @@ class MessagePOSTTest(ZulipTestCase):
                 "realm_str": "non-existing",
             },
         )
-        user.can_forge_sender = False
-        user.save()
-        self.assert_json_error(result, "Unknown organization 'non-existing'")
+        self.assert_json_error(result, "User not authorized for this query")
+
+        # To an existing realm:
+        zephyr_realm = get_realm("zephyr")
+        result = self.api_post(
+            user,
+            "/api/v1/messages",
+            {
+                "type": "stream",
+                "to": "Verona",
+                "client": "test suite",
+                "content": "Test message",
+                "topic": "Test topic",
+                "realm_str": zephyr_realm.string_id,
+            },
+        )
+        self.assert_json_error(result, "User not authorized for this query")
+
+    def test_send_message_forging_message_to_another_realm(self) -> None:
+        """
+        Test for a specific vulnerability that allowed a .can_forge_sender
+        user to forge a message as a cross-realm bot to a stream in another realm,
+        by setting up an appropriate RealmDomain and specifying JabberMirror as client
+        to cause the vulnerable codepath to be executed.
+        """
+        user = self.example_user("default_bot")
+        do_change_can_forge_sender(user, True)
+
+        zephyr_realm = get_realm("zephyr")
+        self.make_stream("Verona", zephyr_realm)
+        do_add_realm_domain(zephyr_realm, "zulip.com", False)
+        result = self.api_post(
+            user,
+            "/api/v1/messages",
+            {
+                "type": "stream",
+                "to": "Verona",
+                "client": "JabberMirror",
+                "content": "Test message",
+                "topic": "Test topic",
+                "forged": "true",
+                "sender": "notification-bot@zulip.com",
+                "realm_str": zephyr_realm.string_id,
+            },
+        )
+        self.assert_json_error(result, "User not authorized for this query")
 
     def test_send_message_when_sender_is_not_set(self) -> None:
         result = self.api_post(
@@ -1395,6 +1540,7 @@ class StreamMessagesTest(ZulipTestCase):
             )
             Subscription.objects.create(
                 user_profile=user,
+                is_user_active=user.is_active,
                 recipient=recipient,
             )
 
@@ -1407,7 +1553,7 @@ class StreamMessagesTest(ZulipTestCase):
                 sending_client=sending_client,
             )
             message.set_topic_name(topic_name)
-            message_dict = build_message_send_dict({"message": message})
+            message_dict = build_message_send_dict(message=message)
             do_send_messages([message_dict])
 
         before_um_count = UserMessage.objects.count()
@@ -1454,7 +1600,7 @@ class StreamMessagesTest(ZulipTestCase):
                 body=content,
             )
 
-        self.assert_length(queries, 12)
+        self.assert_length(queries, 13)
 
     def test_stream_message_dict(self) -> None:
         user_profile = self.example_user("iago")
@@ -1515,14 +1661,14 @@ class StreamMessagesTest(ZulipTestCase):
         )
 
     def _send_stream_message(self, user: UserProfile, stream_name: str, content: str) -> Set[int]:
-        with mock.patch("zerver.lib.actions.send_event") as m:
+        events: List[Mapping[str, Any]] = []
+        with self.tornado_redirected_to_list(events, expected_num_events=1):
             self.send_stream_message(
                 user,
                 stream_name,
                 content=content,
             )
-        self.assertEqual(m.call_count, 1)
-        users = m.call_args[0][2]
+        users = events[0]["users"]
         user_ids = {u["id"] for u in users}
         return user_ids
 
@@ -1530,7 +1676,7 @@ class StreamMessagesTest(ZulipTestCase):
         cordelia = self.example_user("cordelia")
         hamlet = self.example_user("hamlet")
 
-        stream_name = "Test Stream"
+        stream_name = "Test stream"
 
         self.subscribe(hamlet, stream_name)
 
@@ -1539,7 +1685,7 @@ class StreamMessagesTest(ZulipTestCase):
         ).delete()
 
         def mention_cordelia() -> Set[int]:
-            content = "test @**Cordelia Lear** rules"
+            content = "test @**Cordelia, Lear's daughter** rules"
 
             user_ids = self._send_stream_message(
                 user=hamlet,
@@ -1570,7 +1716,7 @@ class StreamMessagesTest(ZulipTestCase):
         hamlet = self.example_user("hamlet")
         realm = hamlet.realm
 
-        stream_name = "Test Stream"
+        stream_name = "Test stream"
 
         self.subscribe(hamlet, stream_name)
 
@@ -1629,12 +1775,18 @@ class StreamMessagesTest(ZulipTestCase):
         self.subscribe(shiva, stream_name)
 
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_EVERYONE
+            realm,
+            "wildcard_mention_policy",
+            Realm.WILDCARD_MENTION_POLICY_EVERYONE,
+            acting_user=None,
         )
         self.send_and_verify_wildcard_mention_message("polonius")
 
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_MEMBERS
+            realm,
+            "wildcard_mention_policy",
+            Realm.WILDCARD_MENTION_POLICY_MEMBERS,
+            acting_user=None,
         )
         self.send_and_verify_wildcard_mention_message("polonius", test_fails=True)
         # There is no restriction on small streams.
@@ -1642,9 +1794,12 @@ class StreamMessagesTest(ZulipTestCase):
         self.send_and_verify_wildcard_mention_message("cordelia")
 
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_FULL_MEMBERS
+            realm,
+            "wildcard_mention_policy",
+            Realm.WILDCARD_MENTION_POLICY_FULL_MEMBERS,
+            acting_user=None,
         )
-        do_set_realm_property(realm, "waiting_period_threshold", 10)
+        do_set_realm_property(realm, "waiting_period_threshold", 10, acting_user=None)
         iago.date_joined = timezone_now()
         iago.save()
         shiva.date_joined = timezone_now()
@@ -1662,7 +1817,10 @@ class StreamMessagesTest(ZulipTestCase):
         self.send_and_verify_wildcard_mention_message("cordelia")
 
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_STREAM_ADMINS
+            realm,
+            "wildcard_mention_policy",
+            Realm.WILDCARD_MENTION_POLICY_STREAM_ADMINS,
+            acting_user=None,
         )
         # TODO: Change this when we implement stream administrators
         self.send_and_verify_wildcard_mention_message("cordelia", test_fails=True)
@@ -1670,18 +1828,28 @@ class StreamMessagesTest(ZulipTestCase):
         self.send_and_verify_wildcard_mention_message("cordelia", sub_count=10)
         self.send_and_verify_wildcard_mention_message("iago")
 
+        do_set_realm_property(
+            realm,
+            "wildcard_mention_policy",
+            Realm.WILDCARD_MENTION_POLICY_MODERATORS,
+            acting_user=None,
+        )
+        self.send_and_verify_wildcard_mention_message("cordelia", test_fails=True)
+        self.send_and_verify_wildcard_mention_message("cordelia", sub_count=10)
+        self.send_and_verify_wildcard_mention_message("shiva")
+
         cordelia.date_joined = timezone_now()
         cordelia.save()
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_ADMINS
+            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_ADMINS, acting_user=None
         )
-        self.send_and_verify_wildcard_mention_message("cordelia", test_fails=True)
+        self.send_and_verify_wildcard_mention_message("shiva", test_fails=True)
         # There is no restriction on small streams.
-        self.send_and_verify_wildcard_mention_message("cordelia", sub_count=10)
+        self.send_and_verify_wildcard_mention_message("shiva", sub_count=10)
         self.send_and_verify_wildcard_mention_message("iago")
 
         do_set_realm_property(
-            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_NOBODY
+            realm, "wildcard_mention_policy", Realm.WILDCARD_MENTION_POLICY_NOBODY, acting_user=None
         )
         self.send_and_verify_wildcard_mention_message("iago", test_fails=True)
         self.send_and_verify_wildcard_mention_message("iago", sub_count=10)
@@ -1691,7 +1859,7 @@ class StreamMessagesTest(ZulipTestCase):
         self.login_user(cordelia)
 
         self.subscribe(cordelia, "test_stream")
-        do_set_realm_property(cordelia.realm, "wildcard_mention_policy", 10)
+        do_set_realm_property(cordelia.realm, "wildcard_mention_policy", 10, acting_user=None)
         content = "@**all** test wildcard mention"
         with mock.patch("zerver.lib.message.num_subscribers_for_stream_id", return_value=16):
             with self.assertRaisesRegex(AssertionError, "Invalid wildcard mention policy"):
@@ -1779,10 +1947,10 @@ class StreamMessagesTest(ZulipTestCase):
         self.assertIn(message2_id, msg_data["huddle_dict"].keys())
 
         # only these two messages are present in msg_data
-        self.assertEqual(len(msg_data["huddle_dict"].keys()), 2)
+        self.assert_length(msg_data["huddle_dict"].keys(), 2)
 
         recent_conversations = get_recent_private_conversations(users[1])
-        self.assertEqual(len(recent_conversations), 1)
+        self.assert_length(recent_conversations, 1)
         recent_conversation = list(recent_conversations.values())[0]
         self.assertEqual(
             set(recent_conversation["user_ids"]), {user.id for user in users if user != users[1]}
@@ -1865,7 +2033,10 @@ class PersonalMessageSendTest(ZulipTestCase):
         user_profile = self.example_user("hamlet")
         self.login_user(user_profile)
         do_set_realm_property(
-            user_profile.realm, "private_message_policy", Realm.PRIVATE_MESSAGE_POLICY_DISABLED
+            user_profile.realm,
+            "private_message_policy",
+            Realm.PRIVATE_MESSAGE_POLICY_DISABLED,
+            acting_user=None,
         )
         with self.assertRaises(JsonableError):
             self.send_personal_message(user_profile, self.example_user("cordelia"))
@@ -2116,7 +2287,7 @@ class InternalPrepTest(ZulipTestCase):
 class TestCrossRealmPMs(ZulipTestCase):
     def make_realm(self, domain: str) -> Realm:
         realm = do_create_realm(string_id=domain, name=domain)
-        do_set_realm_property(realm, "invite_required", False)
+        do_set_realm_property(realm, "invite_required", False, acting_user=None)
         RealmDomain.objects.create(realm=realm, domain=domain)
         return realm
 
@@ -2302,6 +2473,114 @@ class CheckMessageTest(ZulipTestCase):
         addressee = Addressee.for_stream_name(stream_name, topic_name)
         ret = check_message(sender, client, addressee, message_content)
         self.assertEqual(ret.message.sender.id, sender.id)
+
+    def test_check_message_normal_user_cant_send_to_stream_in_another_realm(self) -> None:
+        mit_user = self.mit_user("sipbtest")
+
+        client = make_client(name="test suite")
+        stream = get_stream("Denmark", get_realm("zulip"))
+        topic_name = "issue"
+        message_content = "whatever"
+        addressee = Addressee.for_stream(stream, topic_name)
+
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                mit_user,
+                client,
+                addressee,
+                message_content,
+            )
+
+    def test_check_message_cant_forge_message_as_other_realm_user(self) -> None:
+        """
+        Verifies that the .can_forge_sender permission doesn't allow
+        forging another realm's user as sender of a message to a stream
+        in the forwarder's realm.
+        """
+        forwarder_user_profile = self.example_user("othello")
+        do_change_can_forge_sender(forwarder_user_profile, True)
+
+        mit_user = self.mit_user("sipbtest")
+        notification_bot = self.notification_bot()
+
+        client = make_client(name="test suite")
+        stream = get_stream("Denmark", forwarder_user_profile.realm)
+        topic_name = "issue"
+        message_content = "whatever"
+        addressee = Addressee.for_stream(stream, topic_name)
+
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                mit_user,
+                client,
+                addressee,
+                message_content,
+                forged=True,
+                forwarder_user_profile=forwarder_user_profile,
+            )
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                notification_bot,
+                client,
+                addressee,
+                message_content,
+                forged=True,
+                forwarder_user_profile=forwarder_user_profile,
+            )
+
+    def test_check_message_cant_forge_message_to_stream_in_different_realm(self) -> None:
+        """
+        Verifies that the .can_forge_sender permission doesn't allow
+        forging another realm's user as sender of a message to a stream
+        in the forged user's realm..
+        """
+        forwarder_user_profile = self.example_user("othello")
+        do_change_can_forge_sender(forwarder_user_profile, True)
+
+        mit_user = self.mit_user("sipbtest")
+        notification_bot = self.notification_bot()
+
+        client = make_client(name="test suite")
+        stream_name = "España y Francia"
+        stream = self.make_stream(stream_name, realm=mit_user.realm)
+        self.subscribe(mit_user, stream_name)
+        topic_name = "issue"
+        message_content = "whatever"
+        addressee = Addressee.for_stream(stream, topic_name)
+
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                mit_user,
+                client,
+                addressee,
+                message_content,
+                forged=True,
+                forwarder_user_profile=forwarder_user_profile,
+            )
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                notification_bot,
+                client,
+                addressee,
+                message_content,
+                forged=True,
+                forwarder_user_profile=forwarder_user_profile,
+            )
+
+        # Make sure the special case of sending a message forged as cross-realm bot
+        # to a stream in the bot's realm isn't allowed either.
+        stream = self.make_stream(stream_name, realm=notification_bot.realm)
+        self.subscribe(notification_bot, stream_name)
+        addressee = Addressee.for_stream(stream, topic_name)
+        with self.assertRaisesRegex(JsonableError, "User not authorized for this query"):
+            check_message(
+                notification_bot,
+                client,
+                addressee,
+                message_content,
+                forged=True,
+                forwarder_user_profile=forwarder_user_profile,
+            )
 
     def test_guest_user_can_send_message(self) -> None:
         # Guest users can write to web_public streams.

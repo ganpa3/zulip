@@ -1,4 +1,4 @@
-# Get stream ID
+{generate_api_title(/get_stream_id:get)}
 
 {generate_api_description(/get_stream_id:get)}
 
@@ -8,10 +8,6 @@
 {tab|python}
 
 {generate_code_example(python)|/get_stream_id:get|example}
-
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
 
 {generate_code_example(javascript)|/get_stream_id:get|example}
 
@@ -29,16 +25,10 @@ More examples and documentation can be found [here](https://github.com/zulip/zul
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/get_stream_id:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/get_stream_id:get|fixture(200)}
-
-An example JSON response for when the supplied stream does not exist:
 
 {generate_code_example|/get_stream_id:get|fixture(400)}

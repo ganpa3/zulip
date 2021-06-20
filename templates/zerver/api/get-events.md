@@ -1,4 +1,4 @@
-# Get events from an event queue
+{generate_api_title(/events:get)}
 
 {generate_api_description(/events:get)}
 
@@ -28,10 +28,6 @@ print(client.get_events(
 `call_on_each_message` and `call_on_each_event` will automatically register
 a queue for you.
 
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
-
 {generate_code_example(javascript)|/events:get|example}
 
 {tab|curl}
@@ -52,25 +48,18 @@ endpoint and a queue would be registered in the absence of a `queue_id`.
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/events:get}
 
 #### Example response
-
-A typical successful JSON response may look like:
 
 {generate_code_example|/events:get|fixture(200)}
 
 #### BAD_EVENT_QUEUE_ID errors
 
-If the target event queue has been garbage collected, you'll get the
-following error response:
-
 {generate_code_example|/events:get|fixture(400)}
 
 A compliant client will handle this error by re-initializing itself
-(e.g. a Zulip webapp browser window will reload in this case).
+(e.g. a Zulip web app browser window will reload in this case).
 
 See [the /register endpoint docs](/api/register-queue) for details on how to
 handle these correctly.

@@ -3,7 +3,8 @@
 const path = require("path");
 
 require("css.escape");
-const Handlebars = require("handlebars/runtime");
+require("handlebars/runtime");
+const {JSDOM} = require("jsdom");
 const _ = require("lodash");
 
 const handlebars = require("./handlebars");
@@ -12,6 +13,9 @@ const namespace = require("./namespace");
 const test = require("./test");
 const blueslip = require("./zblueslip");
 const zjquery = require("./zjquery");
+const zpage_params = require("./zpage_params");
+
+global.DOMParser = new JSDOM().window.DOMParser;
 
 require("@babel/register")({
     extensions: [".es6", ".es", ".jsx", ".js", ".mjs", ".ts"],
@@ -63,6 +67,8 @@ function short_tb(tb) {
     return lines.splice(0, i + 1).join("\n") + "\n(...)\n";
 }
 
+require("../../static/js/templates"); // register Zulip extensions
+
 function run_one_module(file) {
     zjquery.clear_initialize_function();
     zjquery.clear_all_elements();
@@ -86,10 +92,14 @@ try {
         namespace.set_global("setInterval", noop);
         _.throttle = immediate;
         _.debounce = immediate;
+        zpage_params.reset();
 
         namespace.mock_esm("../../static/js/blueslip", blueslip);
         require("../../static/js/blueslip");
-        namespace.set_global("i18n", stub_i18n);
+        namespace.mock_esm("../../static/js/i18n", stub_i18n);
+        require("../../static/js/i18n");
+        namespace.mock_esm("../../static/js/page_params", zpage_params);
+        require("../../static/js/page_params");
 
         run_one_module(file);
 
@@ -98,7 +108,6 @@ try {
         }
 
         namespace.finish();
-        Handlebars.HandlebarsEnvironment.call(Handlebars);
     }
 } catch (error) {
     if (error.stack) {

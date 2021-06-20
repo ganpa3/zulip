@@ -14,8 +14,9 @@ from zerver.decorator import add_google_analytics_context
 from zerver.lib.integrations import CATEGORIES, INTEGRATIONS, HubotIntegration, WebhookIntegration
 from zerver.lib.request import REQ, has_request_variables
 from zerver.lib.subdomains import get_subdomain
+from zerver.lib.templates import render_markdown_path
 from zerver.models import Realm
-from zerver.templatetags.app_filters import render_markdown_path
+from zerver.openapi.openapi import get_endpoint_from_operationid, get_openapi_summary
 
 
 def add_api_uri_context(context: Dict[str, Any], request: HttpRequest) -> None:
@@ -105,7 +106,12 @@ class MarkdownDirectoryView(ApiURLView):
             with open(article_path) as article_file:
                 first_line = article_file.readlines()[0]
             # Strip the header and then use the first line to get the article title
-            article_title = first_line.lstrip("#").strip()
+            if self.path_template == "/zerver/api/%s.md" and "{generate_api_title(" in first_line:
+                api_operation = context["OPEN_GRAPH_URL"].split("/api/")[1].replace("-", "_")
+                endpoint_path, endpoint_method = get_endpoint_from_operationid(api_operation)
+                article_title = get_openapi_summary(endpoint_path, endpoint_method)
+            else:
+                article_title = first_line.lstrip("#").strip()
             if context["not_index_page"]:
                 context["OPEN_GRAPH_TITLE"] = f"{article_title} ({title_base})"
             else:
@@ -148,8 +154,8 @@ def add_integrations_open_graph_context(context: Dict[str, Any], request: HttpRe
     path_name = request.path.rstrip("/").split("/")[-1]
     description = (
         "Zulip comes with over a hundred native integrations out of the box, "
-        "and integrates with Zapier, IFTTT, and Hubot to provide hundreds more. "
-        "Connect the apps you use everyday to Zulip."
+        "and integrates with Zapier and IFTTT to provide hundreds more. "
+        "Connect the apps you use every day to Zulip."
     )
 
     if path_name in INTEGRATIONS:

@@ -1,4 +1,4 @@
-# Reorder custom profile fields
+{generate_api_title(/realm/profile_fields:patch)}
 
 {generate_api_description(/realm/profile_fields:patch)}
 
@@ -7,7 +7,9 @@
 {start_tabs}
 {tab|python}
 
-{generate_code_example(python)|/realm/profile_fields:patch|example(admin_config=True)}
+{generate_code_example(python)|/realm/profile_fields:patch|example}
+
+{generate_code_example(javascript)|/realm/profile_fields:patch|example}
 
 {tab|curl}
 
@@ -21,13 +23,11 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/realm/profile_fields:patch}
 
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/profile_fields:patch|fixture(200)}
+
+{generate_code_example|/realm/profile_fields:patch|fixture(400)}

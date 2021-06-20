@@ -3,7 +3,7 @@
 You'll need an Ubuntu or Debian system that satisfies
 [the installation requirements](../production/requirements.md). Alternatively,
 you can use a preconfigured
-[DigitalOcean droplet](https://marketplace.digitalocean.com/apps/zulip), or
+[DigitalOcean droplet](https://marketplace.digitalocean.com/apps/zulip?refcode=3ee45da8ee26), or
 Zulip's
 [experimental Docker image](../production/deployment.html#zulip-in-docker).
 
@@ -67,9 +67,13 @@ If the script gives an error, consult [Troubleshooting](#troubleshooting) below.
   If you'd prefer to acquire an SSL certificate yourself in any other
   way, it's easy to [provide it to Zulip][doc-ssl-manual].
 
+You can see the more advanced installer options in our [deployment options][doc-deployment-options]
+documentation.
+
 [doc-settings]: ../production/settings.md
 [doc-certbot]: ../production/ssl-certificates.html#certbot-recommended
 [doc-ssl-manual]: ../production/ssl-certificates.html#manual-install
+[doc-deployment-options]: ../production/deployment.html#advanced-installer-options
 
 ## Step 3: Create a Zulip organization, and log in
 
@@ -102,11 +106,13 @@ together with using it with you.
 
 Learning more:
 
-* Subscribe to the
-[Zulip announcements email list](https://groups.google.com/forum/#!forum/zulip-announce)
-for server administrators.  This extremely low-traffic list is for
-important announcements, including new releases and security issues. You can also use the
-[RSS feed](https://groups.google.com/forum/#!aboutgroup/zulip-announce).
+* Subscribe to the [Zulip announcements email
+list](https://groups.google.com/forum/#!forum/zulip-announce) for
+server administrators.  This extremely low-traffic list is for
+important announcements, including [new
+releases](../overview/release-lifecycle.md) and security issues. You
+can also use the [RSS
+feed](https://groups.google.com/forum/#!aboutgroup/zulip-announce).
 * Follow [Zulip on Twitter](https://twitter.com/zulip).
 * Learn how to [configure your Zulip server settings](settings.md).
 * Learn about [Backups, export and import](../production/export-and-import.md)
@@ -163,11 +169,13 @@ the bottom of `/var/log/zulip/errors.log` for a traceback, and consult
 the [troubleshooting section](troubleshooting.md) for advice on
 how to debug.
 
-**Community.**
-If the tips above don't help, please visit
-[#production help](https://chat.zulip.org/#narrow/stream/31-production-help)
-in the [Zulip development community server](../contributing/chat-zulip-org.md) for
-realtime help or email zulip-help@googlegroups.com with the full
-traceback, and we'll try to help you out!  Please provide details like
-the full traceback from the bottom of `/var/log/zulip/errors.log` in
-your report.
+**Community.** If the tips above don't help, please visit [#production
+help][production-help] in the [Zulip development community
+server][chat-zulip-org] for realtime help, and we'll try to help you
+out!  Please provide details like the full traceback from the bottom
+of `/var/log/zulip/errors.log` in your report (ideally in a [code
+block][code-block]).
+
+[chat-zulip-org]: ../contributing/chat-zulip-org.md
+[production-help]: https://chat.zulip.org/#narrow/stream/31-production-help
+[code-block]: https://zulip.com/help/code-blocks

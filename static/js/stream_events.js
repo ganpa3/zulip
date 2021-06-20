@@ -1,19 +1,21 @@
 import $ from "jquery";
 
+import {all_messages_data} from "./all_messages_data";
 import * as blueslip from "./blueslip";
 import * as color_data from "./color_data";
-import * as message_list from "./message_list";
+import * as message_lists from "./message_lists";
 import * as message_util from "./message_util";
 import * as message_view_header from "./message_view_header";
 import * as narrow_state from "./narrow_state";
 import * as overlays from "./overlays";
 import * as peer_data from "./peer_data";
-import * as recent_topics from "./recent_topics";
+import * as recent_topics_ui from "./recent_topics_ui";
 import * as settings_notifications from "./settings_notifications";
 import * as stream_color from "./stream_color";
 import * as stream_data from "./stream_data";
 import * as stream_list from "./stream_list";
 import * as stream_muting from "./stream_muting";
+import * as sub_store from "./sub_store";
 import * as subs from "./subs";
 
 // In theory, this function should apply the account-level defaults,
@@ -27,7 +29,7 @@ function update_stream_setting(sub, value, setting) {
 }
 
 export function update_property(stream_id, property, value, other_values) {
-    const sub = stream_data.get_sub_by_id(stream_id);
+    const sub = sub_store.get(stream_id);
     if (sub === undefined) {
         // This isn't a stream we know about, so ignore it.
         blueslip.warn("Update for an unknown subscription", {
@@ -44,7 +46,7 @@ export function update_property(stream_id, property, value, other_values) {
             break;
         case "in_home_view":
             stream_muting.update_is_muted(sub, !value);
-            recent_topics.complete_rerender();
+            recent_topics_ui.complete_rerender();
             break;
         case "desktop_notifications":
         case "audible_notifications":
@@ -116,7 +118,6 @@ export function mark_subscribed(sub, subscribers, color) {
     if (subscribers) {
         peer_data.set_subscribers(sub.stream_id, subscribers);
     }
-    stream_data.update_calculated_fields(sub);
 
     if (overlays.streams_open()) {
         subs.update_settings_for_subscribed(sub);
@@ -126,12 +127,12 @@ export function mark_subscribed(sub, subscribers, color) {
     message_view_header.maybe_rerender_title_area_for_stream(sub);
 
     if (narrow_state.is_for_stream_id(sub.stream_id)) {
-        current_msg_list.update_trailing_bookend();
+        message_lists.current.update_trailing_bookend();
     }
 
     // Update unread counts as the new stream in sidebar might
     // need its unread counts re-calculated
-    message_util.do_unread_count_updates(message_list.all.all_messages());
+    message_util.do_unread_count_updates(all_messages_data.all_messages());
 
     stream_list.add_sidebar_row(sub);
 }
@@ -142,7 +143,6 @@ export function mark_unsubscribed(sub) {
         return;
     } else if (sub.subscribed) {
         stream_data.unsubscribe_myself(sub);
-        stream_data.update_calculated_fields(sub);
         if (overlays.streams_open()) {
             subs.update_settings_for_unsubscribed(sub);
         }
@@ -154,7 +154,7 @@ export function mark_unsubscribed(sub) {
     }
 
     if (narrow_state.is_for_stream_id(sub.stream_id)) {
-        current_msg_list.update_trailing_bookend();
+        message_lists.current.update_trailing_bookend();
     }
 
     stream_list.remove_sidebar_row(sub.stream_id);

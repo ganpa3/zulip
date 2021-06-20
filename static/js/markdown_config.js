@@ -1,11 +1,12 @@
 import * as hash_util from "./hash_util";
+import {page_params} from "./page_params";
 import * as people from "./people";
 import * as stream_data from "./stream_data";
 import * as user_groups from "./user_groups";
 
 /*
     This config is in a separate file for partly
-    tactical reasons.  We want the webapp to
+    tactical reasons.  We want the web app to
     configure this one way, but we don't want to
     share this code with mobile.
 

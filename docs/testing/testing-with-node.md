@@ -32,7 +32,7 @@ in `frontend_tests/node_tests`.  Here is an example test from
     stream_data.add_sub('Denmark', sub);
     sub = stream_data.get_sub('Denmark');
     assert.equal(sub.color, 'red');
-    sub = stream_data.get_sub_by_id(id);
+    sub = sub_store.get(id);
     assert.equal(sub.color, 'red');
 }());
 ```
@@ -116,12 +116,12 @@ like the following toward the top of your test file:
 For modules that you want to completely stub out, use a pattern like
 this:
 
->     set_global('page_params', {
->         email: 'bob@zulip.com'
+>     const reminder = mock_esm("../../static/js/reminder", {
+>         is_deferred_delivery: noop,
 >     });
 >
 >     // then maybe further down
->     page_params.email = 'alice@zulip.com';
+>     reminder.is_deferred_delivery = () => true;
 
 One can similarly stub out functions in a module's exported interface
 with either `noop` functions or actual code.

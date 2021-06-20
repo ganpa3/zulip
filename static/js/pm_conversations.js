@@ -1,4 +1,5 @@
 import {FoldDict} from "./fold_dict";
+import * as muting from "./muting";
 import * as people from "./people";
 
 const partners = new Set();
@@ -9,6 +10,18 @@ export function set_partner(user_id) {
 
 export function is_partner(user_id) {
     return partners.has(user_id);
+}
+
+function filter_muted_pms(conversation) {
+    // We hide muted users from the top left corner, as well as those huddles
+    // in which all participants are muted.
+    const recipients = conversation.user_ids_string.split(",").map((id) => Number.parseInt(id, 10));
+
+    if (recipients.every((id) => muting.is_user_muted(id))) {
+        return false;
+    }
+
+    return true;
 }
 
 class RecentPrivateMessages {
@@ -59,13 +72,15 @@ class RecentPrivateMessages {
     get() {
         // returns array of structs with user_ids_string and
         // message_id
-        return this.recent_private_messages;
+        return this.recent_private_messages.filter((pm) => filter_muted_pms(pm));
     }
 
     get_strings() {
         // returns array of structs with user_ids_string and
         // message_id
-        return this.recent_private_messages.map((conversation) => conversation.user_ids_string);
+        return this.recent_private_messages
+            .filter((pm) => filter_muted_pms(pm))
+            .map((conversation) => conversation.user_ids_string);
     }
 
     initialize(params) {
@@ -76,6 +91,19 @@ class RecentPrivateMessages {
 }
 
 export let recent = new RecentPrivateMessages();
+
+export function process_message(message) {
+    const user_ids = people.pm_with_user_ids(message);
+    if (!user_ids) {
+        return;
+    }
+
+    for (const user_id of user_ids) {
+        set_partner(user_id);
+    }
+
+    recent.insert(user_ids, message.id);
+}
 
 export function clear_for_testing() {
     recent = new RecentPrivateMessages();

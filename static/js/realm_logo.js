@@ -1,6 +1,7 @@
 import $ from "jquery";
 
 import * as channel from "./channel";
+import {page_params} from "./page_params";
 import * as settings_config from "./settings_config";
 import * as upload_widget from "./upload_widget";
 
@@ -47,7 +48,7 @@ export function build_realm_logo_widget(upload_function, is_night) {
         file_input_error_elem.expectOne(),
         upload_button_elem.expectOne(),
         upload_function,
-        page_params.max_logo_file_size,
+        page_params.max_logo_file_size_mib,
     );
 }
 

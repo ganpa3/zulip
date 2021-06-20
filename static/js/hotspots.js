@@ -7,6 +7,7 @@ import render_intro_reply_hotspot from "../templates/intro_reply_hotspot.hbs";
 
 import * as blueslip from "./blueslip";
 import * as channel from "./channel";
+import {page_params} from "./page_params";
 import * as popovers from "./popovers";
 
 // popover orientations
@@ -70,7 +71,7 @@ const WHALE = "/static/images/hotspots/whale.svg";
 export function post_hotspot_as_read(hotspot_name) {
     channel.post({
         url: "/json/users/me/hotspots",
-        data: {hotspot: JSON.stringify(hotspot_name)},
+        data: {hotspot: hotspot_name},
         error(err) {
             blueslip.error(err.responseText);
         },

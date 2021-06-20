@@ -1,4 +1,4 @@
-# Get all custom profile fields
+{generate_api_title(/realm/profile_fields:get)}
 
 {generate_api_description(/realm/profile_fields:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/realm/profile_fields:get|example}
+
+{generate_code_example(javascript)|/realm/profile_fields:get|example}
 
 {tab|curl}
 
@@ -21,13 +23,11 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/realm/profile_fields:get}
 
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/profile_fields:get|fixture(200)}
+
+{generate_code_example|/realm/profile_fields:get|fixture(400)}

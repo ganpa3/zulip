@@ -2,7 +2,7 @@ import base64
 import os
 import re
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 from unittest import mock, skipUnless
 
 import orjson
@@ -18,7 +18,6 @@ from zerver.decorator import (
     authenticated_rest_api_view,
     authenticated_uploads_api_view,
     cachify,
-    get_client_name,
     internal_notify_view,
     is_local_addr,
     rate_limit,
@@ -29,6 +28,7 @@ from zerver.decorator import (
 )
 from zerver.forms import OurAuthenticationForm
 from zerver.lib.actions import (
+    change_user_is_active,
     do_deactivate_realm,
     do_deactivate_user,
     do_reactivate_realm,
@@ -68,6 +68,7 @@ from zerver.lib.validator import (
     check_int_in,
     check_list,
     check_none_or,
+    check_or,
     check_short_string,
     check_string,
     check_string_fixed_length,
@@ -81,6 +82,7 @@ from zerver.lib.validator import (
     to_non_negative_int,
     to_positive_or_allowed_int,
 )
+from zerver.middleware import parse_client
 from zerver.models import Realm, UserProfile, get_realm, get_user
 
 if settings.ZILENCER_ENABLED:
@@ -88,41 +90,41 @@ if settings.ZILENCER_ENABLED:
 
 
 class DecoratorTestCase(ZulipTestCase):
-    def test_get_client_name(self) -> None:
+    def test_parse_client(self) -> None:
         req = HostRequestMock()
-        self.assertEqual(get_client_name(req), "Unspecified")
+        self.assertEqual(parse_client(req), ("Unspecified", None))
 
         req.META[
             "HTTP_USER_AGENT"
         ] = "ZulipElectron/4.0.3 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Zulip/4.0.3 Chrome/66.0.3359.181 Electron/3.1.10 Safari/537.36"
-        self.assertEqual(get_client_name(req), "ZulipElectron")
+        self.assertEqual(parse_client(req), ("ZulipElectron", "4.0.3"))
 
         req.META["HTTP_USER_AGENT"] = "ZulipDesktop/0.4.4 (Mac)"
-        self.assertEqual(get_client_name(req), "ZulipDesktop")
+        self.assertEqual(parse_client(req), ("ZulipDesktop", "0.4.4"))
 
         req.META["HTTP_USER_AGENT"] = "ZulipMobile/26.22.145 (Android 10)"
-        self.assertEqual(get_client_name(req), "ZulipMobile")
+        self.assertEqual(parse_client(req), ("ZulipMobile", "26.22.145"))
 
         req.META["HTTP_USER_AGENT"] = "ZulipMobile/26.22.145 (iOS 13.3.1)"
-        self.assertEqual(get_client_name(req), "ZulipMobile")
+        self.assertEqual(parse_client(req), ("ZulipMobile", "26.22.145"))
 
         # TODO: This should ideally be Firefox.
         req.META[
             "HTTP_USER_AGENT"
         ] = "Mozilla/5.0 (X11; Linux x86_64; rv:73.0) Gecko/20100101 Firefox/73.0"
-        self.assertEqual(get_client_name(req), "Mozilla")
+        self.assertEqual(parse_client(req), ("Mozilla", None))
 
         # TODO: This should ideally be Chrome.
         req.META[
             "HTTP_USER_AGENT"
         ] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.43 Safari/537.36"
-        self.assertEqual(get_client_name(req), "Mozilla")
+        self.assertEqual(parse_client(req), ("Mozilla", None))
 
         # TODO: This should ideally be Mobile Safari if we had better user-agent parsing.
         req.META[
             "HTTP_USER_AGENT"
         ] = "Mozilla/5.0 (Linux; Android 8.0.0; SM-G930F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Mobile Safari/537.36"
-        self.assertEqual(get_client_name(req), "Mozilla")
+        self.assertEqual(parse_client(req), ("Mozilla", None))
 
     def test_REQ_aliases(self) -> None:
         @has_request_variables
@@ -166,7 +168,7 @@ class DecoratorTestCase(ZulipTestCase):
 
         @has_request_variables
         def get_total(
-            request: HttpRequest, numbers: Iterable[int] = REQ(converter=my_converter)
+            request: HttpRequest, numbers: Sequence[int] = REQ(converter=my_converter)
         ) -> int:
             return sum(numbers)
 
@@ -201,7 +203,7 @@ class DecoratorTestCase(ZulipTestCase):
     def test_REQ_validator(self) -> None:
         @has_request_variables
         def get_total(
-            request: HttpRequest, numbers: Iterable[int] = REQ(validator=check_list(check_int))
+            request: HttpRequest, numbers: Sequence[int] = REQ(json_validator=check_list(check_int))
         ) -> int:
             return sum(numbers)
 
@@ -390,14 +392,12 @@ class DecoratorTestCase(ZulipTestCase):
         self.assertEqual(api_result, webhook_bot_email)
 
         # Now deactivate the user
-        webhook_bot.is_active = False
-        webhook_bot.save()
+        change_user_is_active(webhook_bot, False)
         with self.assertRaisesRegex(JsonableError, "Account is deactivated"):
             my_webhook(request)
 
         # Reactive the user, but deactivate their realm.
-        webhook_bot.is_active = True
-        webhook_bot.save()
+        change_user_is_active(webhook_bot, True)
         webhook_bot.realm.deactivated = True
         webhook_bot.realm.save()
         with self.assertRaisesRegex(JsonableError, "This organization has been deactivated"):
@@ -788,12 +788,20 @@ class ValidatorTestCase(ZulipTestCase):
             self.assertEqual(to_non_negative_int(str(2 ** 32)))
 
     def test_to_positive_or_allowed_int(self) -> None:
+        self.assertEqual(to_positive_or_allowed_int()("5"), 5)
         self.assertEqual(to_positive_or_allowed_int(-1)("5"), 5)
+
         self.assertEqual(to_positive_or_allowed_int(-1)("-1"), -1)
         with self.assertRaisesRegex(ValueError, "argument is negative"):
             to_positive_or_allowed_int(-1)("-5")
+        with self.assertRaisesRegex(ValueError, "argument is negative"):
+            to_positive_or_allowed_int()("-5")
+
         with self.assertRaises(ValueError):
             to_positive_or_allowed_int(-1)("0")
+        with self.assertRaises(ValueError):
+            to_positive_or_allowed_int()("0")
+        self.assertEqual(to_positive_or_allowed_int(0)("0"), 0)
 
     def test_check_float(self) -> None:
         x: Any = 5.5
@@ -923,7 +931,7 @@ class ValidatorTestCase(ZulipTestCase):
         x = {
             "names": ["alice", "bob"],
             "city": "Boston",
-            "food": ["Lobster Spaghetti"],
+            "food": ["Lobster spaghetti"],
         }
 
         check_dict(keys)("x", x)  # since _allow_only_listed_keys is False
@@ -936,7 +944,7 @@ class ValidatorTestCase(ZulipTestCase):
         x = {
             "names": ["alice", "bob"],
             "city": "Boston",
-            "food": "Lobster Spaghetti",
+            "food": "Lobster spaghetti",
         }
         with self.assertRaisesRegex(ValidationError, r'x\["food"\] is not a list'):
             check_dict_only(keys, optional_keys)("x", x)
@@ -1030,6 +1038,25 @@ class ValidatorTestCase(ZulipTestCase):
         with self.assertRaisesRegex(ValidationError, r"x is not a string or integer"):
             check_string_or_int("x", x)
 
+    def test_check_or(self) -> None:
+        x: Any = "valid"
+        check_or(check_string_in(["valid"]), check_url)("x", x)
+
+        x = "http://zulip-bots.example.com/"
+        check_or(check_string_in(["valid"]), check_url)("x", x)
+
+        x = "invalid"
+        with self.assertRaisesRegex(ValidationError, r"x is not a URL"):
+            check_or(check_string_in(["valid"]), check_url)("x", x)
+
+        x = "http://127.0.0"
+        with self.assertRaisesRegex(ValidationError, r"x is not a URL"):
+            check_or(check_string_in(["valid"]), check_url)("x", x)
+
+        x = 1
+        with self.assertRaisesRegex(ValidationError, r"x is not a string"):
+            check_or(check_string_in(["valid"]), check_url)("x", x)
+
 
 class DeactivatedRealmTest(ZulipTestCase):
     def test_send_deactivated_realm(self) -> None:
@@ -1038,7 +1065,7 @@ class DeactivatedRealmTest(ZulipTestCase):
 
         """
         realm = get_realm("zulip")
-        do_deactivate_realm(get_realm("zulip"))
+        do_deactivate_realm(get_realm("zulip"), acting_user=None)
 
         result = self.client_post(
             "/json/messages",
@@ -1067,7 +1094,9 @@ class DeactivatedRealmTest(ZulipTestCase):
                 "to": self.example_email("othello"),
             },
         )
-        self.assert_json_error_contains(result, "has been deactivated", status_code=400)
+        self.assert_json_error_contains(
+            result, "This organization has been deactivated", status_code=403
+        )
 
         result = self.api_post(
             self.example_user("hamlet"),
@@ -1079,7 +1108,9 @@ class DeactivatedRealmTest(ZulipTestCase):
                 "to": self.example_email("othello"),
             },
         )
-        self.assert_json_error_contains(result, "has been deactivated", status_code=401)
+        self.assert_json_error_contains(
+            result, "This organization has been deactivated", status_code=401
+        )
 
     def test_fetch_api_key_deactivated_realm(self) -> None:
         """
@@ -1095,20 +1126,24 @@ class DeactivatedRealmTest(ZulipTestCase):
         realm.deactivated = True
         realm.save()
         result = self.client_post("/json/fetch_api_key", {"password": test_password})
-        self.assert_json_error_contains(result, "has been deactivated", status_code=400)
+        self.assert_json_error_contains(
+            result, "This organization has been deactivated", status_code=403
+        )
 
     def test_webhook_deactivated_realm(self) -> None:
         """
         Using a webhook while in a deactivated realm fails
 
         """
-        do_deactivate_realm(get_realm("zulip"))
+        do_deactivate_realm(get_realm("zulip"), acting_user=None)
         user_profile = self.example_user("hamlet")
         api_key = get_api_key(user_profile)
         url = f"/api/v1/external/jira?api_key={api_key}&stream=jira_custom"
         data = self.webhook_fixture_data("jira", "created_v2")
         result = self.client_post(url, data, content_type="application/json")
-        self.assert_json_error_contains(result, "has been deactivated", status_code=400)
+        self.assert_json_error_contains(
+            result, "This organization has been deactivated", status_code=403
+        )
 
 
 class LoginRequiredTest(ZulipTestCase):
@@ -1128,13 +1163,12 @@ class LoginRequiredTest(ZulipTestCase):
         self.assert_in_response("I agree to the", result)
 
         # Verify fails if user deactivated (with session still valid)
-        user_profile.is_active = False
-        user_profile.save()
+        change_user_is_active(user_profile, False)
         result = self.client_get("/accounts/accept_terms/")
         self.assertEqual(result.status_code, 302)
 
         # Verify succeeds if user reactivated
-        do_reactivate_user(user_profile)
+        do_reactivate_user(user_profile, acting_user=None)
         self.login_user(user_profile)
         result = self.client_get("/accounts/accept_terms/")
         self.assert_in_response("I agree to the", result)
@@ -1158,7 +1192,10 @@ class FetchAPIKeyTest(ZulipTestCase):
     def test_fetch_api_key_email_address_visibility(self) -> None:
         user = self.example_user("cordelia")
         do_set_realm_property(
-            user.realm, "email_address_visibility", Realm.EMAIL_ADDRESS_VISIBILITY_ADMINS
+            user.realm,
+            "email_address_visibility",
+            Realm.EMAIL_ADDRESS_VISIBILITY_ADMINS,
+            acting_user=None,
         )
 
         self.login_user(user)
@@ -1181,7 +1218,7 @@ class InactiveUserTest(ZulipTestCase):
         """
         user_profile = self.example_user("hamlet")
         self.login_user(user_profile)
-        do_deactivate_user(user_profile)
+        do_deactivate_user(user_profile, acting_user=None)
 
         result = self.client_post(
             "/json/messages",
@@ -1195,10 +1232,9 @@ class InactiveUserTest(ZulipTestCase):
         self.assert_json_error_contains(result, "Not logged in", status_code=401)
 
         # Even if a logged-in session was leaked, it still wouldn't work
-        do_reactivate_user(user_profile)
+        do_reactivate_user(user_profile, acting_user=None)
         self.login_user(user_profile)
-        user_profile.is_active = False
-        user_profile.save()
+        change_user_is_active(user_profile, False)
 
         result = self.client_post(
             "/json/messages",
@@ -1209,7 +1245,7 @@ class InactiveUserTest(ZulipTestCase):
                 "to": self.example_email("othello"),
             },
         )
-        self.assert_json_error_contains(result, "Account is deactivated", status_code=400)
+        self.assert_json_error_contains(result, "Account is deactivated", status_code=403)
 
         result = self.api_post(
             self.example_user("hamlet"),
@@ -1235,10 +1271,10 @@ class InactiveUserTest(ZulipTestCase):
         user_profile.save()
 
         self.login_by_email(email, password=test_password)
-        user_profile.is_active = False
-        user_profile.save()
+        change_user_is_active(user_profile, False)
+
         result = self.client_post("/json/fetch_api_key", {"password": test_password})
-        self.assert_json_error_contains(result, "Account is deactivated", status_code=400)
+        self.assert_json_error_contains(result, "Account is deactivated", status_code=403)
 
     def test_login_deactivated_user(self) -> None:
         """
@@ -1246,7 +1282,7 @@ class InactiveUserTest(ZulipTestCase):
 
         """
         user_profile = self.example_user("hamlet")
-        do_deactivate_user(user_profile)
+        do_deactivate_user(user_profile, acting_user=None)
 
         result = self.login_with_return(self.example_email("hamlet"))
         self.assert_in_response("Your account is no longer active.", result)
@@ -1275,7 +1311,7 @@ class InactiveUserTest(ZulipTestCase):
             self.assertTrue(form.is_valid())
 
         # Test a mirror-dummy deactivated user.
-        do_deactivate_user(user_profile)
+        do_deactivate_user(user_profile, acting_user=None)
         user_profile.save()
 
         form = OurAuthenticationForm(request, payload)
@@ -1298,13 +1334,13 @@ class InactiveUserTest(ZulipTestCase):
 
         """
         user_profile = self.example_user("hamlet")
-        do_deactivate_user(user_profile)
+        do_deactivate_user(user_profile, acting_user=None)
 
         api_key = get_api_key(user_profile)
         url = f"/api/v1/external/jira?api_key={api_key}&stream=jira_custom"
         data = self.webhook_fixture_data("jira", "created_v2")
         result = self.client_post(url, data, content_type="application/json")
-        self.assert_json_error_contains(result, "Account is deactivated", status_code=400)
+        self.assert_json_error_contains(result, "Account is deactivated", status_code=403)
 
 
 class TestIncomingWebhookBot(ZulipTestCase):
@@ -1363,11 +1399,11 @@ class TestValidateApiKey(ZulipTestCase):
             validate_api_key(HostRequestMock(), self.webhook_bot.email, api_key)
 
     def test_validate_api_key_if_profile_is_not_active(self) -> None:
-        self._change_is_active_field(self.default_bot, False)
+        change_user_is_active(self.default_bot, False)
         with self.assertRaises(JsonableError):
             api_key = get_api_key(self.default_bot)
             validate_api_key(HostRequestMock(), self.default_bot.email, api_key)
-        self._change_is_active_field(self.default_bot, True)
+        change_user_is_active(self.default_bot, True)
 
     def test_validate_api_key_if_profile_is_incoming_webhook_and_is_webhook_is_unset(self) -> None:
         with self.assertRaises(JsonableError), self.assertLogs(level="WARNING") as root_warn_log:
@@ -1435,10 +1471,6 @@ class TestValidateApiKey(ZulipTestCase):
                     )
                 ],
             )
-
-    def _change_is_active_field(self, profile: UserProfile, value: bool) -> None:
-        profile.is_active = value
-        profile.save()
 
 
 class TestInternalNotifyView(ZulipTestCase):
@@ -1650,10 +1682,11 @@ class TestAuthenticatedJsonPostViewDecorator(ZulipTestCase):
         user_profile = self.example_user("hamlet")
         self.login_user(user_profile)
         # we deactivate user manually because do_deactivate_user removes user session
-        user_profile.is_active = False
-        user_profile.save()
-        self.assert_json_error_contains(self._do_test(user_profile), "Account is deactivated")
-        do_reactivate_user(user_profile)
+        change_user_is_active(user_profile, False)
+        self.assert_json_error_contains(
+            self._do_test(user_profile), "Account is deactivated", status_code=403
+        )
+        do_reactivate_user(user_profile, acting_user=None)
 
     def test_authenticated_json_post_view_if_user_realm_is_deactivated(self) -> None:
         user_profile = self.example_user("hamlet")
@@ -1662,7 +1695,9 @@ class TestAuthenticatedJsonPostViewDecorator(ZulipTestCase):
         user_profile.realm.deactivated = True
         user_profile.realm.save()
         self.assert_json_error_contains(
-            self._do_test(user_profile), "This organization has been deactivated"
+            self._do_test(user_profile),
+            "This organization has been deactivated",
+            status_code=403,
         )
         do_reactivate_realm(user_profile.realm)
 
@@ -1741,6 +1776,7 @@ class TestZulipLoginRequiredDecorator(ZulipTestCase):
         request.META["PATH_INFO"] = ""
         request.user = hamlet = self.example_user("hamlet")
         request.user.is_verified = lambda: False
+        request.client_name = ""
         self.login_user(hamlet)
         request.session = self.client.session
         request.get_host = lambda: "zulip.testserver"
@@ -1756,6 +1792,7 @@ class TestZulipLoginRequiredDecorator(ZulipTestCase):
             request.META["PATH_INFO"] = ""
             request.user = hamlet = self.example_user("hamlet")
             request.user.is_verified = lambda: False
+            request.client_name = ""
             self.login_user(hamlet)
             request.session = self.client.session
             request.get_host = lambda: "zulip.testserver"
@@ -1782,6 +1819,7 @@ class TestZulipLoginRequiredDecorator(ZulipTestCase):
             request.META["PATH_INFO"] = ""
             request.user = hamlet = self.example_user("hamlet")
             request.user.is_verified = lambda: True
+            request.client_name = ""
             self.login_user(hamlet)
             request.session = self.client.session
             request.get_host = lambda: "zulip.testserver"
@@ -1794,14 +1832,15 @@ class TestZulipLoginRequiredDecorator(ZulipTestCase):
 
 class TestRequireDecorators(ZulipTestCase):
     def test_require_server_admin_decorator(self) -> None:
-        user = self.example_user("hamlet")
-        self.login_user(user)
+        realm_owner = self.example_user("desdemona")
+        self.login_user(realm_owner)
 
         result = self.client_get("/activity")
         self.assertEqual(result.status_code, 302)
 
-        user.is_staff = True
-        user.save()
+        server_admin = self.example_user("iago")
+        self.login_user(server_admin)
+        self.assertEqual(server_admin.is_staff, True)
 
         result = self.client_get("/activity")
         self.assertEqual(result.status_code, 200)

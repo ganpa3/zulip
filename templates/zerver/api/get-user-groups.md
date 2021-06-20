@@ -1,4 +1,4 @@
-# Get user groups
+{generate_api_title(/user_groups:get)}
 
 {!api-members-only.md!}
 
@@ -10,6 +10,8 @@
 {tab|python}
 
 {generate_code_example(python)|/user_groups:get|example}
+
+{generate_code_example(javascript)|/user_groups:get|example}
 
 {tab|curl}
 
@@ -23,12 +25,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/user_groups:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/user_groups:get|fixture(200)}
+
+{generate_code_example|/user_groups:get|fixture(400)}

@@ -1,4 +1,4 @@
-# Get user presence
+{generate_api_title(/users/{user_id_or_email}/presence:get)}
 
 {generate_api_description(/users/{user_id_or_email}/presence:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/users/{user_id_or_email}/presence:get|example}
+
+{generate_code_example(javascript)|/users/{user_id_or_email}/presence:get|example}
 
 {tab|curl}
 
@@ -21,12 +23,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/users/{user_id_or_email}/presence:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/{user_id_or_email}/presence:get|fixture(200)}
+
+{generate_code_example|/users/{user_id_or_email}/presence:get|fixture(400)}

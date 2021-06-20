@@ -1,4 +1,4 @@
-# Update user group members
+{generate_api_title(/user_groups/{user_group_id}/members:post)}
 
 {generate_api_description(/user_groups/{user_group_id}/members:post)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/user_groups/{user_group_id}/members:post|example}
+
+{generate_code_example(javascript)|/user_groups/{user_group_id}/members:post|example}
 
 {tab|curl}
 
@@ -23,6 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/user_groups/{user_group_id}/members:post|fixture(200)}
+
+{generate_code_example|/user_groups/{user_group_id}/members:post|fixture(400)}

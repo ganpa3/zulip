@@ -1,4 +1,4 @@
-# Get a message's edit history
+{generate_api_title(/messages/{message_id}/history:get)}
 
 {generate_api_description(/messages/{message_id}/history:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/messages/{message_id}/history:get|example}
+
+{generate_code_example(javascript)|/messages/{message_id}/history:get|example}
 
 {tab|curl}
 
@@ -20,8 +22,6 @@
 {generate_api_arguments_table|zulip.yaml|/messages/{message_id}/history:get}
 
 ## Response
-
-#### Return values
 
 {generate_return_values_table|zulip.yaml|/messages/{message_id}/history:get}
 
@@ -37,10 +37,6 @@ was edited, `prev_content`, `prev_rendered_content`, and
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/messages/{message_id}/history:get|fixture(200)}
-
-An example JSON response for when the specified message does not exist:
 
 {generate_code_example|/messages/{message_id}/history:get|fixture(400)}

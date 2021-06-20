@@ -1,4 +1,4 @@
-# Get all custom emoji
+{generate_api_title(/realm/emoji:get)}
 
 {generate_api_description(/realm/emoji:get)}
 
@@ -8,10 +8,6 @@
 {tab|python}
 
 {generate_code_example(python)|/realm/emoji:get|example}
-
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
 
 {generate_code_example(javascript)|/realm/emoji:get|example}
 
@@ -27,13 +23,11 @@ More examples and documentation can be found [here](https://github.com/zulip/zul
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/realm/emoji:get}
 
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/emoji:get|fixture(200)}
+
+{generate_code_example|/realm/emoji:get|fixture(400)}

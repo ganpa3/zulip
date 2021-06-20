@@ -3,7 +3,7 @@
 Zulip takes pride in its extensive, carefully designed test suites.
 For example, `test-backend` runs a complete test suite (~98% test
 coverage; 100% on core code) for the Zulip server in under a minute on
-a fast laptop; very few webapps of similar scope can say something
+a fast laptop; very few web apps of similar scope can say something
 similar.
 
 This page focused on the mechanics of running automated tests in a
@@ -35,7 +35,7 @@ typically involve running subsets of the tests with commands like these:
 ./tools/lint zerver/lib/actions.py # Lint the file you just changed
 ./tools/test-backend zerver.tests.test_markdown.MarkdownTest.test_inline_youtube
 ./tools/test-backend MarkdownTest # Run `test-backend --help` for more options
-./tools/test-js-with-puppeteer 07-navigation.js
+./tools/test-js-with-puppeteer navigation.ts
 ./tools/test-js-with-node utils.js
 ```
 

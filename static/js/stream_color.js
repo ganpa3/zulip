@@ -1,10 +1,9 @@
 import $ from "jquery";
 
 import * as color_class from "./color_class";
+import {$t} from "./i18n";
 import * as message_view_header from "./message_view_header";
 import * as subs from "./subs";
-
-export const default_color = "#c2c2c2";
 
 function update_table_stream_color(table, stream_name, color) {
     // This is ugly, but temporary, as the new design will make it
@@ -70,8 +69,7 @@ export function set_colorpicker_color(colorpicker, color) {
     });
 }
 
-export function update_stream_color(sub, color, opts) {
-    opts = {update_historical: false, ...opts};
+export function update_stream_color(sub, color, {update_historical = false} = {}) {
     sub.color = color;
     const stream_id = sub.stream_id;
     // The swatch in the subscription row header.
@@ -94,7 +92,7 @@ export function update_stream_color(sub, color, opts) {
         )}'] .large-icon`,
     ).css("color", color);
 
-    if (opts.update_historical) {
+    if (update_historical) {
         update_historical_message_color(sub.name, color);
     }
     update_stream_sidebar_swatch_color(stream_id, color);
@@ -124,7 +122,7 @@ export const sidebar_popover_colorpicker_options_full = {
     showInput: true,
     flat: true,
     cancelText: "",
-    chooseText: i18n.t("Confirm"),
+    chooseText: $t({defaultMessage: "Confirm"}),
     palette: stream_color_palette,
     change: picker_do_change_color,
 };

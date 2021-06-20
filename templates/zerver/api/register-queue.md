@@ -28,7 +28,7 @@ Once the server garbage-collects your event queue, the server will
 with a code of `BAD_EVENT_QUEUE_ID` if you try to fetch events from
 the event queue.  Your software will need to handle that error
 condition by re-initializing itself (e.g. this is what triggers your
-browser reloading the Zulip webapp when your laptop comes back online
+browser reloading the Zulip web app when your laptop comes back online
 after being offline for more than 10 minutes).
 
 When prototyping with this API, we recommend first calling `register`
@@ -52,10 +52,6 @@ potentially messy races, etc.
 
 {generate_code_example(python)|/register:post|example}
 
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
-
 {generate_code_example(javascript)|/register:post|example}
 
 {tab|curl}
@@ -70,12 +66,8 @@ More examples and documentation can be found [here](https://github.com/zulip/zul
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/register:post}
 
 #### Example response
-
-A typical successful JSON response may look like:
 
 {generate_code_example|/register:post|fixture(200)}

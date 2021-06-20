@@ -1,4 +1,4 @@
-# Get subscription status
+{generate_api_title(/users/{user_id}/subscriptions/{stream_id}:get)}
 
 {generate_api_description(/users/{user_id}/subscriptions/{stream_id}:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/users/{user_id}/subscriptions/{stream_id}:get|example}
+
+{generate_code_example(javascript)|/users/{user_id}/subscriptions/{stream_id}:get|example}
 
 {tab|curl}
 
@@ -23,6 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/{user_id}/subscriptions/{stream_id}:get|fixture(200)}
+
+{generate_code_example|/users/{user_id}/subscriptions/{stream_id}:get|fixture(400)}

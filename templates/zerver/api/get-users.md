@@ -1,4 +1,4 @@
-# Get all users
+{generate_api_title(/users:get)}
 
 {generate_api_description(/users:get)}
 
@@ -8,10 +8,6 @@
 {tab|python}
 
 {generate_code_example(python)|/users:get|example}
-
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
 
 {generate_code_example(javascript)|/users:get|example}
 
@@ -33,12 +29,10 @@ You may pass the `client_gravatar` query parameter as follows:
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/users:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users:get|fixture(200)}
+
+{generate_code_example|/users:get|fixture(400)}

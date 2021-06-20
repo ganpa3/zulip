@@ -1,9 +1,10 @@
 import importlib
 import json
 import os
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
-from django.utils.translation import ugettext as _
+from django.conf import settings
+from django.utils.translation import gettext as _
 
 from zerver.lib.actions import (
     internal_send_huddle_message,
@@ -23,7 +24,7 @@ from zerver.models import UserProfile, get_active_user
 
 our_dir = os.path.dirname(os.path.abspath(__file__))
 
-from zulip_bots.lib import RateLimit
+from zulip_bots.lib import BotIdentity, RateLimit
 
 
 def get_bot_handler(service_name: str) -> Any:
@@ -41,7 +42,7 @@ def get_bot_handler(service_name: str) -> Any:
 
 
 class StateHandler:
-    storage_size_limit: int = 10000000  # TODO: Store this in the server configuration model.
+    storage_size_limit: int = settings.USER_STATE_SIZE_LIMIT
 
     def __init__(self, user_profile: UserProfile) -> None:
         self.user_profile = user_profile
@@ -79,19 +80,25 @@ class EmbeddedBotHandler:
         self.storage = StateHandler(user_profile)
         self.user_id = user_profile.id
 
-    def send_message(self, message: Dict[str, Any]) -> None:
+    def identity(self) -> BotIdentity:
+        return BotIdentity(self.full_name, self.email)
+
+    def react(self, message: Dict[str, Any], emoji_name: str) -> Dict[str, Any]:
+        return {}  # Not implemented
+
+    def send_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
         if not self._rate_limit.is_legal():
             self._rate_limit.show_error_and_exit()
 
         if message["type"] == "stream":
-            internal_send_stream_message_by_name(
+            message_id = internal_send_stream_message_by_name(
                 self.user_profile.realm,
                 self.user_profile,
                 message["to"],
                 message["topic"],
                 message["content"],
             )
-            return
+            return {"id": message_id}
 
         assert message["type"] == "private"
         # Ensure that it's a comma-separated list, even though the
@@ -102,15 +109,20 @@ class EmbeddedBotHandler:
             raise EmbeddedBotEmptyRecipientsList(_("Message must have recipients!"))
         elif len(message["to"]) == 1:
             recipient_user = get_active_user(recipients[0], self.user_profile.realm)
-            internal_send_private_message(self.user_profile, recipient_user, message["content"])
+            message_id = internal_send_private_message(
+                self.user_profile, recipient_user, message["content"]
+            )
         else:
-            internal_send_huddle_message(
+            message_id = internal_send_huddle_message(
                 self.user_profile.realm, self.user_profile, recipients, message["content"]
             )
+        return {"id": message_id}
 
-    def send_reply(self, message: Dict[str, Any], response: str) -> None:
+    def send_reply(
+        self, message: Dict[str, Any], response: str, widget_content: Optional[str] = None
+    ) -> Dict[str, Any]:
         if message["type"] == "private":
-            self.send_message(
+            result = self.send_message(
                 dict(
                     type="private",
                     to=[x["email"] for x in message["display_recipient"]],
@@ -119,7 +131,7 @@ class EmbeddedBotHandler:
                 )
             )
         else:
-            self.send_message(
+            result = self.send_message(
                 dict(
                     type="stream",
                     to=message["display_recipient"],
@@ -128,6 +140,10 @@ class EmbeddedBotHandler:
                     sender_email=message["sender_email"],
                 )
             )
+        return {"id": result["id"]}
+
+    def update_message(self, message: Dict[str, Any]) -> None:
+        pass  # Not implemented
 
     # The bot_name argument exists only to comply with ExternalBotHandler.get_config_info().
     def get_config_info(self, bot_name: str, optional: bool = False) -> Dict[str, str]:

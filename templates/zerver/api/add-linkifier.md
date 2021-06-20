@@ -1,4 +1,4 @@
-# Add a linkifier
+{generate_api_title(/realm/filters:post)}
 
 {generate_api_description(/realm/filters:post)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/realm/filters:post|example}
+
+{generate_code_example(javascript)|/realm/filters:post|example}
 
 {tab|curl}
 
@@ -21,12 +23,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/realm/filters:post}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/realm/filters:post|fixture(200)}
+
+{generate_code_example|/realm/filters:post|fixture(400)}

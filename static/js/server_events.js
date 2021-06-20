@@ -5,7 +5,9 @@ import * as blueslip from "./blueslip";
 import * as channel from "./channel";
 import * as echo from "./echo";
 import * as message_events from "./message_events";
+import * as message_lists from "./message_lists";
 import * as message_store from "./message_store";
+import {page_params} from "./page_params";
 import * as reload from "./reload";
 import * as reload_state from "./reload_state";
 import * as sent_messages from "./sent_messages";
@@ -134,8 +136,8 @@ function get_events_success(events) {
         }
     }
 
-    if (home_msg_list.selected_id() === -1 && !home_msg_list.empty()) {
-        home_msg_list.select_id(home_msg_list.first().id, {then_scroll: false});
+    if (message_lists.home.selected_id() === -1 && !message_lists.home.empty()) {
+        message_lists.home.select_id(message_lists.home.first().id, {then_scroll: false});
     }
 
     if (update_message_events.length !== 0) {
@@ -168,21 +170,19 @@ function hide_ui_connection_error() {
     $("#connection-error").removeClass("get-events-error");
 }
 
-function get_events(options) {
-    options = {dont_block: false, ...options};
-
+function get_events({dont_block = false} = {}) {
     if (reload_state.is_in_progress()) {
         return;
     }
 
     // TODO: In the future, we may implement Tornado support for live
-    // update for web_public_visitor, but until then, there's nothing
+    // update for spectator, but until then, there's nothing
     // to do here.
-    if (page_params.is_web_public_visitor) {
+    if (page_params.is_spectator) {
         return;
     }
 
-    get_events_params.dont_block = options.dont_block || get_events_failures > 0;
+    get_events_params.dont_block = dont_block || get_events_failures > 0;
 
     if (get_events_params.dont_block) {
         // If we're requesting an immediate re-connect to the server,
@@ -211,7 +211,7 @@ function get_events(options) {
         url: "/json/events",
         data: get_events_params,
         idempotent: true,
-        timeout: page_params.poll_timeout,
+        timeout: page_params.event_queue_longpoll_timeout_seconds * 1000,
         success(data) {
             watchdog.set_suspect_offline(false);
             try {
@@ -308,7 +308,7 @@ export function initialize() {
 }
 
 export function cleanup_event_queue() {
-    // Submit a request to the server to cleanup our event queue
+    // Submit a request to the server to clean up our event queue
     if (page_params.event_queue_expired === true || page_params.no_event_queue === true) {
         return;
     }

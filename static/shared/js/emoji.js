@@ -4,7 +4,7 @@ import _ from "lodash";
 let emoji_codes = {};
 
 // `emojis_by_name` is the central data source that is supposed to be
-// used by every widget in the webapp for gathering data for displaying
+// used by every widget in the web app for gathering data for displaying
 // emojis. Emoji picker uses this data to derive data for its own use.
 export const emojis_by_name = new Map();
 
@@ -39,10 +39,11 @@ function build_emoticon_translations() {
         { regex: /(\:\/)/g, replacement_text: ':confused:' },
         { regex: /(<3)/g, replacement_text: ':heart:' },
         { regex: /(\:\()/g, replacement_text: ':frown:' },
-        { regex: /(\:\|)/g, replacement_text: ':expressionless:' }
+        { regex: /(\:\|)/g, replacement_text: ':expressionless:' },
+        ....
     ]
 
-        We build up this list of ~6 emoticon translations
+        We build up this list of ~12 emoticon translations
         even if page_params.translate_emoticons is false, since
         that setting can be flipped via live update events.
         On the other hand, we assume that emoticon_conversions

@@ -14,6 +14,7 @@ from typing import (
     AbstractSet,
     Any,
     Callable,
+    Collection,
     Deque,
     Dict,
     Iterable,
@@ -30,9 +31,10 @@ from typing import (
 import orjson
 import tornado.ioloop
 from django.conf import settings
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from typing_extensions import TypedDict
 
+from version import API_FEATURE_LEVEL, ZULIP_VERSION
 from zerver.decorator import cachify
 from zerver.lib.message import MessageDict
 from zerver.lib.narrow import build_narrow_filter
@@ -40,7 +42,6 @@ from zerver.lib.queue import queue_json_publish, retry_event
 from zerver.lib.request import JsonableError
 from zerver.lib.utils import statsd
 from zerver.middleware import async_request_timer_restart
-from zerver.models import UserProfile
 from zerver.tornado.autoreload import add_reload_hook
 from zerver.tornado.descriptors import clear_descriptor_by_handler_id, set_descriptor_by_handler_id
 from zerver.tornado.exceptions import BadEventQueueIdError
@@ -84,8 +85,9 @@ class ClientDescriptor:
         slim_presence: bool = False,
         all_public_streams: bool = False,
         lifespan_secs: int = 0,
-        narrow: Iterable[Sequence[str]] = [],
+        narrow: Collection[Sequence[str]] = [],
         bulk_message_deletion: bool = False,
+        stream_typing_notifications: bool = False,
     ) -> None:
         # These objects are serialized on shutdown and restored on restart.
         # If fields are added or semantics are changed, temporary code must be
@@ -107,6 +109,7 @@ class ClientDescriptor:
         self.narrow = narrow
         self.narrow_filter = build_narrow_filter(narrow)
         self.bulk_message_deletion = bulk_message_deletion
+        self.stream_typing_notifications = stream_typing_notifications
 
         # Default for lifespan_secs is DEFAULT_EVENT_QUEUE_TIMEOUT_SECS;
         # but users can set it as high as MAX_QUEUE_TIMEOUT_SECS.
@@ -132,6 +135,7 @@ class ClientDescriptor:
             narrow=self.narrow,
             client_type_name=self.client_type_name,
             bulk_message_deletion=self.bulk_message_deletion,
+            stream_typing_notifications=self.stream_typing_notifications,
         )
 
     def __repr__(self) -> str:
@@ -162,6 +166,7 @@ class ClientDescriptor:
             d["queue_timeout"],
             d.get("narrow", []),
             d.get("bulk_message_deletion", False),
+            d.get("stream_typing_notifications", False),
         )
         ret.last_connection_time = d["last_connection_time"]
         return ret
@@ -200,6 +205,11 @@ class ClientDescriptor:
             return False
         if event["type"] == "message":
             return self.narrow_filter(event)
+        if event["type"] == "typing" and "stream_id" in event:
+            # Typing notifications for stream messages are only
+            # delivered if the stream_typing_notifications
+            # client_capability is enabled, for backwards compatibility.
+            return self.stream_typing_notifications
         return True
 
     # TODO: Refactor so we don't need this function
@@ -249,7 +259,7 @@ class ClientDescriptor:
     def cleanup(self) -> None:
         # Before we can GC the event queue, we need to disconnect the
         # handler and notify the client (or connection server) so that
-        # they can cleanup their own state related to the GC'd event
+        # they can clean up their own state related to the GC'd event
         # queue.  Finishing the handler before we GC ensures the
         # invariant that event queues are idle when passed to
         # `do_gc_event_queues` is preserved.
@@ -563,7 +573,12 @@ def load_event_queues(port: int) -> None:
 
 
 def send_restart_events(immediate: bool = False) -> None:
-    event: Dict[str, Any] = dict(type="restart", server_generation=settings.SERVER_GENERATION)
+    event: Dict[str, Any] = dict(
+        type="restart",
+        zulip_version=ZULIP_VERSION,
+        zulip_feature_level=API_FEATURE_LEVEL,
+        server_generation=settings.SERVER_GENERATION,
+    )
     if immediate:
         event["immediate"] = True
     for client in clients.values():
@@ -718,35 +733,35 @@ def missedmessage_hook(
     for event in client.event_queue.contents(include_internal_data=True):
         if event["type"] != "message":
             continue
+        internal_data = event.get("internal_data", {})
+
+        sender_is_muted = internal_data.get("sender_is_muted", False)
+        if sender_is_muted:
+            continue
+
         assert "flags" in event
 
-        flags = event["flags"]
-
-        mentioned = "mentioned" in flags and "read" not in flags
+        mentioned = internal_data.get("mentioned", False)
         private_message = event["message"]["type"] == "private"
         # stream_push_notify is set in process_message_event.
-        stream_push_notify = event.get("internal_data", {}).get("stream_push_notify", False)
-        stream_email_notify = event.get("internal_data", {}).get("stream_email_notify", False)
-        wildcard_mention_notify = (
-            event.get("internal_data", {}).get("wildcard_mention_notify", False)
-            and "read" not in flags
-            and "wildcard_mentioned" in flags
-        )
+        stream_push_notify = internal_data.get("stream_push_notify", False)
+        stream_email_notify = internal_data.get("stream_email_notify", False)
+        wildcard_mention_notify = internal_data.get("wildcard_mention_notify", False)
 
         stream_name = None
         if not private_message:
             stream_name = event["message"]["display_recipient"]
 
-        # Since one is by definition idle, we don't need to check always_push_notify
-        always_push_notify = False
+        # Since one is by definition idle, we don't need to check online_push_enabled
+        online_push_enabled = False
         # Since we just GC'd the last event queue, the user is definitely idle.
         idle = True
 
         message_id = event["message"]["id"]
         # Pass on the information on whether a push or email notification was already sent.
         already_notified = dict(
-            push_notified=event.get("internal_data", {}).get("push_notified", False),
-            email_notified=event.get("internal_data", {}).get("email_notified", False),
+            push_notified=internal_data.get("push_notified", False),
+            email_notified=internal_data.get("email_notified", False),
         )
         maybe_enqueue_notifications(
             user_profile_id,
@@ -757,7 +772,7 @@ def missedmessage_hook(
             stream_push_notify,
             stream_email_notify,
             stream_name,
-            always_push_notify,
+            online_push_enabled,
             idle,
             already_notified,
         )
@@ -783,7 +798,7 @@ def maybe_enqueue_notifications(
     stream_push_notify: bool,
     stream_email_notify: bool,
     stream_name: Optional[str],
-    always_push_notify: bool,
+    online_push_enabled: bool,
     idle: bool,
     already_notified: Dict[str, bool],
 ) -> Dict[str, bool]:
@@ -796,7 +811,7 @@ def maybe_enqueue_notifications(
     """
     notified: Dict[str, bool] = {}
 
-    if (idle or always_push_notify) and (
+    if (idle or online_push_enabled) and (
         private_message or mentioned or wildcard_mention_notify or stream_push_notify
     ):
         notice = build_offline_notification(user_profile_id, message_id)
@@ -841,7 +856,7 @@ def maybe_enqueue_notifications(
 
 class ClientInfo(TypedDict):
     client: ClientDescriptor
-    flags: Iterable[str]
+    flags: Collection[str]
     is_sender: bool
 
 
@@ -875,7 +890,7 @@ def get_client_info_for_message_event(
 
     for user_data in users:
         user_profile_id: int = user_data["id"]
-        flags: Iterable[str] = user_data.get("flags", [])
+        flags: Collection[str] = user_data.get("flags", [])
 
         for client in get_client_descriptors_for_user(user_profile_id):
             send_to_clients[client.event_queue.id] = dict(
@@ -888,7 +903,7 @@ def get_client_info_for_message_event(
 
 
 def process_message_event(
-    event_template: Mapping[str, Any], users: Iterable[Mapping[str, Any]]
+    event_template: Mapping[str, Any], users: Collection[Mapping[str, Any]]
 ) -> None:
     """See
     https://zulip.readthedocs.io/en/latest/subsystems/sending-messages.html
@@ -931,14 +946,35 @@ def process_message_event(
         # If the recipient was offline and the message was a single or group PM to them
         # or they were @-notified potentially notify more immediately
         private_message = message_type == "private" and user_profile_id != sender_id
-        mentioned = "mentioned" in flags and "read" not in flags
+        mentioned = user_data.get("mentioned", False)
         stream_push_notify = user_data.get("stream_push_notify", False)
         stream_email_notify = user_data.get("stream_email_notify", False)
-        wildcard_mention_notify = (
-            user_data.get("wildcard_mention_notify", False)
-            and "wildcard_mentioned" in flags
-            and "read" not in flags
+        wildcard_mention_notify = user_data.get("wildcard_mention_notify", False)
+        sender_is_muted = user_data.get("sender_is_muted", False)
+
+        # TODO/compatibility: Translation code for the rename of
+        # `always_push_notify` to `online_push_enabled`.  Remove this
+        # when one can no longer directly upgrade from 4.x to master.
+        if "online_push_enabled" in user_data:
+            online_push_enabled = user_data["online_push_enabled"]
+        elif "always_push_notify" in user_data:
+            online_push_enabled = user_data["always_push_notify"]
+        else:
+            online_push_enabled = False
+
+        extra_user_data[user_profile_id] = dict(
+            internal_data=dict(
+                mentioned=mentioned,
+                stream_push_notify=stream_push_notify,
+                stream_email_notify=stream_email_notify,
+                wildcard_mention_notify=wildcard_mention_notify,
+                sender_is_muted=sender_is_muted,
+            ),
         )
+
+        if sender_is_muted:
+            # If the sender is muted, never enqueue notifications.
+            continue
 
         # We first check if a message is potentially mentionable,
         # since receiver_is_off_zulip is somewhat expensive.
@@ -952,27 +988,24 @@ def process_message_event(
             idle = receiver_is_off_zulip(user_profile_id) or (
                 user_profile_id in presence_idle_user_ids
             )
-            always_push_notify = user_data.get("always_push_notify", False)
+
             stream_name = event_template.get("stream_name")
 
-            result: Dict[str, Any] = {}
-            result["internal_data"] = maybe_enqueue_notifications(
-                user_profile_id,
-                message_id,
-                private_message,
-                mentioned,
-                wildcard_mention_notify,
-                stream_push_notify,
-                stream_email_notify,
-                stream_name,
-                always_push_notify,
-                idle,
-                {},
+            extra_user_data[user_profile_id]["internal_data"].update(
+                maybe_enqueue_notifications(
+                    user_profile_id,
+                    message_id,
+                    private_message,
+                    mentioned,
+                    wildcard_mention_notify,
+                    stream_push_notify,
+                    stream_email_notify,
+                    stream_name,
+                    online_push_enabled,
+                    idle,
+                    {},
+                )
             )
-            result["internal_data"]["stream_push_notify"] = stream_push_notify
-            result["internal_data"]["stream_email_notify"] = stream_email_notify
-            result["internal_data"]["wildcard_mention_notify"] = wildcard_mention_notify
-            extra_user_data[user_profile_id] = result
 
     for client_data in send_to_clients.values():
         client = client_data["client"]
@@ -1086,7 +1119,16 @@ def process_message_update_event(
     stream_push_user_ids = set(event_template.pop("stream_push_user_ids", []))
     stream_email_user_ids = set(event_template.pop("stream_email_user_ids", []))
     wildcard_mention_user_ids = set(event_template.pop("wildcard_mention_user_ids", []))
-    push_notify_user_ids = set(event_template.pop("push_notify_user_ids", []))
+    muted_sender_user_ids = set(event_template.pop("muted_sender_user_ids", []))
+
+    # TODO/compatibility: Translation code for the rename of
+    # `push_notify_user_ids` to `online_push_user_ids`.  Remove this
+    # when one can no longer directly upgrade from 4.x to master.
+    online_push_user_ids = set()
+    if "online_push_user_ids" in event_template:
+        online_push_user_ids = set(event_template.pop("online_push_user_ids"))
+    elif "push_notify_user_ids" in event_template:
+        online_push_user_ids = set(event_template.pop("push_notify_user_ids"))
 
     stream_name = event_template.get("stream_name")
     message_id = event_template["message_id"]
@@ -1105,14 +1147,16 @@ def process_message_update_event(
         maybe_enqueue_notifications_for_message_update(
             user_profile_id=user_profile_id,
             message_id=message_id,
-            stream_name=stream_name,
-            prior_mention_user_ids=prior_mention_user_ids,
-            mention_user_ids=mention_user_ids,
+            private_message=(stream_name is None),
+            mentioned=(user_profile_id in mention_user_ids),
             wildcard_mention_notify=wildcard_mention_notify,
-            presence_idle_user_ids=presence_idle_user_ids,
-            stream_push_user_ids=stream_push_user_ids,
-            stream_email_user_ids=stream_email_user_ids,
-            push_notify_user_ids=push_notify_user_ids,
+            stream_push_notify=(user_profile_id in stream_push_user_ids),
+            stream_email_notify=(user_profile_id in stream_email_user_ids),
+            stream_name=stream_name,
+            online_push_enabled=(user_profile_id in online_push_user_ids),
+            presence_idle=(user_profile_id in presence_idle_user_ids),
+            muted_sender=(user_profile_id in muted_sender_user_ids),
+            prior_mentioned=(user_profile_id in prior_mention_user_ids),
         )
 
         for client in get_client_descriptors_for_user(user_profile_id):
@@ -1123,25 +1167,29 @@ def process_message_update_event(
 
 
 def maybe_enqueue_notifications_for_message_update(
-    user_profile_id: UserProfile,
+    user_profile_id: int,
     message_id: int,
-    stream_name: Optional[str],
-    prior_mention_user_ids: Set[int],
-    mention_user_ids: Set[int],
+    private_message: bool,
+    mentioned: bool,
     wildcard_mention_notify: bool,
-    presence_idle_user_ids: Set[int],
-    stream_push_user_ids: Set[int],
-    stream_email_user_ids: Set[int],
-    push_notify_user_ids: Set[int],
+    stream_push_notify: bool,
+    stream_email_notify: bool,
+    stream_name: Optional[str],
+    online_push_enabled: bool,
+    presence_idle: bool,
+    muted_sender: bool,
+    prior_mentioned: bool,
 ) -> None:
-    private_message = stream_name is None
+    if muted_sender:
+        # Never send notifications if the sender has been muted
+        return
 
     if private_message:
         # We don't do offline notifications for PMs, because
         # we already notified the user of the original message
         return
 
-    if user_profile_id in prior_mention_user_ids:
+    if prior_mentioned:
         # Don't spam people with duplicate mentions.  This is
         # especially important considering that most message
         # edits are simple typo corrections.
@@ -1157,9 +1205,6 @@ def maybe_enqueue_notifications_for_message_update(
         # without extending the UserMessage data model.
         return
 
-    stream_push_notify = user_profile_id in stream_push_user_ids
-    stream_email_notify = user_profile_id in stream_email_user_ids
-
     if stream_push_notify or stream_email_notify:
         # Currently we assume that if this flag is set to True, then
         # the user already was notified about the earlier message,
@@ -1168,12 +1213,7 @@ def maybe_enqueue_notifications_for_message_update(
         # model.
         return
 
-    # We can have newly mentioned people in an updated message.
-    mentioned = user_profile_id in mention_user_ids
-
-    always_push_notify = user_profile_id in push_notify_user_ids
-
-    idle = (user_profile_id in presence_idle_user_ids) or receiver_is_off_zulip(user_profile_id)
+    idle = presence_idle or receiver_is_off_zulip(user_profile_id)
 
     maybe_enqueue_notifications(
         user_profile_id=user_profile_id,
@@ -1184,7 +1224,7 @@ def maybe_enqueue_notifications_for_message_update(
         stream_push_notify=stream_push_notify,
         stream_email_notify=stream_email_notify,
         stream_name=stream_name,
-        always_push_notify=always_push_notify,
+        online_push_enabled=online_push_enabled,
         idle=idle,
         already_notified={},
     )
@@ -1196,9 +1236,9 @@ def process_notification(notice: Mapping[str, Any]) -> None:
     start_time = time.time()
 
     if event["type"] == "message":
-        process_message_event(event, cast(Iterable[Mapping[str, Any]], users))
+        process_message_event(event, cast(List[Mapping[str, Any]], users))
     elif event["type"] == "update_message":
-        process_message_update_event(event, cast(Iterable[Mapping[str, Any]], users))
+        process_message_update_event(event, cast(List[Mapping[str, Any]], users))
     elif event["type"] == "delete_message":
         if len(users) > 0 and isinstance(users[0], dict):
             # do_delete_messages used to send events with users in
@@ -1206,15 +1246,16 @@ def process_notification(notice: Mapping[str, Any]) -> None:
             # compatibility with events in that format still in the
             # queue at the time of upgrade.
             #
-            # TODO: Remove this block in release >= 4.0.
-            user_ids: List[int] = [user["id"] for user in cast(List[Mapping[str, int]], users)]
+            # TODO/compatibility: Remove this block once you can no
+            # longer directly upgrade directly from 4.x to master.
+            user_ids: List[int] = [user["id"] for user in cast(List[Mapping[str, Any]], users)]
         else:
             user_ids = cast(List[int], users)
         process_deletion_event(event, user_ids)
     elif event["type"] == "presence":
-        process_presence_event(event, cast(Iterable[int], users))
+        process_presence_event(event, cast(List[int], users))
     else:
-        process_event(event, cast(Iterable[int], users))
+        process_event(event, cast(List[int], users))
     logging.debug(
         "Tornado: Event %s for %s users took %sms",
         event["type"],

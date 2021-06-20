@@ -1,4 +1,4 @@
-# Get messages
+{generate_api_title(/messages:get)}
 
 {generate_api_description(/messages:get)}
 
@@ -8,10 +8,6 @@
 {tab|python}
 
 {generate_code_example(python)|/messages:get|example}
-
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
 
 {generate_code_example(javascript)|/messages:get|example}
 
@@ -27,8 +23,6 @@ More examples and documentation can be found [here](https://github.com/zulip/zul
 
 ## Response
 
-#### Return values
-
 When a request is successful, this endpoint returns a dictionary
 containing the following (in addition to the `msg` and `result` keys
 present in all Zulip API responses).
@@ -37,10 +31,6 @@ present in all Zulip API responses).
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/messages:get|fixture(200)}
 
-[status-messages]: /help/format-your-message-using-markdown#status-messages
-[linkifiers]: /help/add-a-custom-linkifier
-[message-flags]: /api/update-message-flags#available-flags
+{generate_code_example|/messages:get|fixture(400)}

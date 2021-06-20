@@ -1,4 +1,4 @@
-# Get attachments
+{generate_api_title(/attachments:get)}
 
 {generate_api_description(/attachments:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/attachments:get|example}
+
+{generate_code_example(javascript)|/attachments:get|example}
 
 {tab|curl}
 
@@ -21,12 +23,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/attachments:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/attachments:get|fixture(200)}
+
+{generate_code_example|/attachments:get|fixture(400)}

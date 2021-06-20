@@ -2,19 +2,17 @@
 
 const {strict: assert} = require("assert");
 
-const {with_overrides, set_global, zrequire} = require("../zjsunit/namespace");
+const {with_overrides, zrequire} = require("../zjsunit/namespace");
 const {make_stub} = require("../zjsunit/stub");
 const {run_test} = require("../zjsunit/test");
+const {page_params} = require("../zjsunit/zpage_params");
 
-const page_params = set_global("page_params", {});
-
-zrequire("timerender");
 const message_store = zrequire("message_store");
 const starred_messages = zrequire("starred_messages");
 const stream_popover = zrequire("stream_popover");
 const top_left_corner = zrequire("top_left_corner");
 
-run_test("add starred", (override) => {
+run_test("add starred", ({override}) => {
     starred_messages.starred_ids.clear();
     assert.deepEqual(starred_messages.get_starred_msg_ids(), []);
     assert.equal(starred_messages.get_count(), 0);
@@ -25,7 +23,7 @@ run_test("add starred", (override) => {
     assert.equal(starred_messages.get_count(), 2);
 });
 
-run_test("remove starred", (override) => {
+run_test("remove starred", ({override}) => {
     starred_messages.starred_ids.clear();
     assert.deepEqual(starred_messages.get_starred_msg_ids(), []);
 
@@ -45,33 +43,30 @@ run_test("get starred ids in topic", () => {
         starred_messages.starred_ids.add(id);
     }
 
-    assert.deepEqual(
-        starred_messages.get_starred_message_ids_in_topic(undefined, "topic name"),
-        [],
-    );
-    assert.deepEqual(starred_messages.get_starred_message_ids_in_topic(3, undefined), []);
+    assert.deepEqual(starred_messages.get_count_in_topic(undefined, "topic name"), 0);
+    assert.deepEqual(starred_messages.get_count_in_topic(3, undefined), 0);
 
     // id: 1 isn't inserted, to test handling the case
     // when message_store.get() returns undefined
-    message_store.create_mock_message({
+    message_store.update_message_cache({
         id: 2,
         type: "private",
     });
-    message_store.create_mock_message({
+    message_store.update_message_cache({
         // Different stream
         id: 3,
         type: "stream",
         stream_id: 19,
         topic: "topic",
     });
-    message_store.create_mock_message({
+    message_store.update_message_cache({
         // Different topic
         id: 4,
         type: "stream",
         stream_id: 20,
         topic: "some other topic",
     });
-    message_store.create_mock_message({
+    message_store.update_message_cache({
         // Correct match
         id: 5,
         type: "stream",
@@ -79,10 +74,10 @@ run_test("get starred ids in topic", () => {
         topic: "topic",
     });
 
-    assert.deepEqual(starred_messages.get_starred_message_ids_in_topic(20, "topic"), [5]);
+    assert.deepEqual(starred_messages.get_count_in_topic(20, "topic"), 1);
 });
 
-run_test("initialize", (override) => {
+run_test("initialize", ({override}) => {
     starred_messages.starred_ids.clear();
     for (const id of [1, 2, 3]) {
         starred_messages.starred_ids.add(id);

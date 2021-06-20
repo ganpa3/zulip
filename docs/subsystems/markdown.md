@@ -137,7 +137,7 @@ Important considerations for any changes are:
 Zulip's Markdown processor's rendering supports a number of features
 that depend on realm-specific or user-specific data.  For example, the
 realm could have
-[linkifiers](https://zulip.com/help/add-a-custom-linkification-filter)
+[linkifiers](https://zulip.com/help/add-a-custom-linkifier)
 or [custom emoji](https://zulip.com/help/add-custom-emoji)
 configured, and Zulip supports mentions for streams, users, and user
 groups (which depend on data like users' names, IDs, etc.).
@@ -145,7 +145,7 @@ groups (which depend on data like users' names, IDs, etc.).
 At a backend code level, these are controlled by the `message_realm`
 object and other arguments passed into `do_convert` (`sent_by_bot`,
 `translate_emoticons`, `mention_data`, etc.).  Because
-`python-markdown` doesn't support directly passing arguments into the
+Python-Markdown doesn't support directly passing arguments into the
 Markdown processor, our logic attaches these data to the Markdown
 processor object via e.g. `_md_engine.zulip_db_data`, and then
 individual Markdown rules can access the data from there.

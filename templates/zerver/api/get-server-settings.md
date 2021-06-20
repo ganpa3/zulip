@@ -1,4 +1,4 @@
-# Get server settings
+{generate_api_title(/server_settings:get)}
 
 {generate_api_description(/server_settings:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/server_settings:get|example}
+
+{generate_code_example(javascript)|/server_settings:get|example}
 
 {tab|curl}
 
@@ -20,8 +22,6 @@
 {generate_api_arguments_table|zulip.yaml|/server_settings:get}
 
 ## Response
-
-#### Return values
 
 {generate_return_values_table|zulip.yaml|/server_settings:get}
 
@@ -39,6 +39,6 @@ response, for two reasons:
 
 #### Example response
 
-A typical successful JSON response for a single-organization server may look like:
-
 {generate_code_example|/server_settings:get|fixture(200)}
+
+{generate_code_example|/server_settings:get|fixture(400)}

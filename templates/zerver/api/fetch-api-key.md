@@ -1,4 +1,4 @@
-# Fetch an API key (production)
+{generate_api_title(/fetch_api_key:post)}
 
 {generate_api_description(/fetch_api_key:post)}
 
@@ -17,12 +17,8 @@
 
 ## Response
 
-### Return values
-
 {generate_return_values_table|zulip.yaml|/fetch_api_key:post}
 
 ### Example response
-
-A typical successful JSON response may look like:
 
 {generate_code_example|/fetch_api_key:post|fixture(200)}

@@ -4,15 +4,13 @@ const {strict: assert} = require("assert");
 
 const _ = require("lodash");
 
-const {mock_cjs, mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
+const {mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
 const {run_test} = require("../zjsunit/test");
 const $ = require("../zjsunit/zjquery");
 
 set_global("document", "document-stub");
 
 const noop = () => {};
-
-mock_cjs("jquery", $);
 
 function MessageListView() {
     return {};
@@ -21,20 +19,19 @@ mock_esm("../../static/js/message_list_view", {
     MessageListView,
 });
 
-mock_esm("../../static/js/recent_topics", {
+mock_esm("../../static/js/recent_topics_ui", {
     process_messages: noop,
 });
-// Still required for page_params.initial_pointer
-set_global("page_params", {});
 mock_esm("../../static/js/ui_report", {
     hide_error: noop,
 });
 
 const channel = mock_esm("../../static/js/channel");
+const message_helper = mock_esm("../../static/js/message_helper");
+const message_lists = mock_esm("../../static/js/message_lists");
 const message_store = mock_esm("../../static/js/message_store");
 const message_util = mock_esm("../../static/js/message_util");
 const pm_list = mock_esm("../../static/js/pm_list");
-const server_events = mock_esm("../../static/js/server_events");
 const stream_list = mock_esm("../../static/js/stream_list", {
     maybe_scroll_narrow_into_view: () => {},
 });
@@ -49,6 +46,7 @@ set_global("document", "document-stub");
 
 const message_fetch = zrequire("message_fetch");
 
+const {all_messages_data} = zrequire("all_messages_data");
 const {Filter} = zrequire("../js/filter");
 const message_list = zrequire("message_list");
 const people = zrequire("people");
@@ -59,8 +57,6 @@ const alice = {
     full_name: "Alice",
 };
 people.add_active_user(alice);
-
-server_events.home_view_loaded = noop;
 
 function stub_message_view(list) {
     list.view.append = noop;
@@ -79,16 +75,11 @@ function make_home_msg_list() {
     return list;
 }
 
-function make_all_list() {
-    return new message_list.MessageList({});
-}
-
 function reset_lists() {
-    set_global("home_msg_list", make_home_msg_list());
-    set_global("current_msg_list", home_msg_list);
-    message_list.__Rewire__("all", make_all_list());
-    stub_message_view(home_msg_list);
-    stub_message_view(message_list.all);
+    message_lists.home = make_home_msg_list();
+    message_lists.current = message_lists.home;
+    all_messages_data.clear();
+    stub_message_view(message_lists.home);
 }
 
 function config_fake_channel(conf) {
@@ -99,7 +90,7 @@ function config_fake_channel(conf) {
     channel.get = (opts) => {
         assert.equal(opts.url, "/json/messages");
         // There's a separate call with anchor="newest" that happens
-        // unconditionally; do basic verfication of that call.
+        // unconditionally; do basic verification of that call.
         if (opts.data.anchor === "newest") {
             if (!called_with_newest_flag) {
                 called_with_newest_flag = true;
@@ -113,7 +104,7 @@ function config_fake_channel(conf) {
             throw new Error("only use this for one call");
         }
         if (!conf.can_call_again) {
-            assert(self.success === undefined);
+            assert.equal(self.success, undefined);
         }
         assert.deepEqual(opts.data, conf.expected_opts_data);
         self.success = opts.success;
@@ -132,7 +123,7 @@ function config_process_results(messages) {
         messages_processed_for_bools.push(message);
     };
 
-    message_store.add_message_metadata = (message) => message;
+    message_helper.process_new_message = (message) => message;
 
     message_util.do_unread_count_updates = (arg) => {
         assert.deepEqual(arg, messages);
@@ -211,7 +202,7 @@ function test_fetch_success(opts) {
     process_results.verify();
 }
 
-function initial_fetch_step() {
+function initial_fetch_step(home_view_loaded) {
     const self = {};
 
     let fetch;
@@ -222,7 +213,7 @@ function initial_fetch_step() {
             expected_opts_data: initialize_data.initial_fetch.req,
         });
 
-        message_fetch.initialize();
+        message_fetch.initialize(home_view_loaded);
     };
 
     self.finish = () => {
@@ -285,7 +276,13 @@ function test_backfill_idle(idle_config) {
 run_test("initialize", () => {
     reset_lists();
 
-    const step1 = initial_fetch_step();
+    let home_loaded = false;
+
+    function home_view_loaded() {
+        home_loaded = true;
+    }
+
+    const step1 = initial_fetch_step(home_view_loaded);
 
     step1.prep();
 
@@ -294,22 +291,21 @@ run_test("initialize", () => {
     step2.prep();
     step1.finish();
 
+    assert.ok(!home_loaded);
     const idle_config = step2.finish();
+    assert.ok(home_loaded);
 
     test_backfill_idle(idle_config);
 });
 
 function simulate_narrow() {
-    const filter = {
-        predicate: () => () => false,
-        public_operators: () => [{operator: "pm-with", operand: alice.email}],
-    };
+    const filter = new Filter([{operator: "pm-with", operand: alice.email}]);
 
     const msg_list = new message_list.MessageList({
         table_name: "zfilt",
         filter,
     });
-    set_global("current_msg_list", msg_list);
+    message_lists.current = msg_list;
 
     return msg_list;
 }
@@ -371,7 +367,7 @@ run_test("loading_newer", () => {
                 anchor: "444",
                 num_before: 0,
                 num_after: 100,
-                narrow: `[{"operator":"pm-with","operand":[${alice.user_id}]}]`,
+                narrow: `[{"negated":false,"operator":"pm-with","operand":[${alice.user_id}]}]`,
                 client_gravatar: true,
             },
             resp: {
@@ -420,7 +416,7 @@ run_test("loading_newer", () => {
 
     (function test_home() {
         reset_lists();
-        const msg_list = home_msg_list;
+        const msg_list = message_lists.home;
 
         const data = [
             {
@@ -455,8 +451,7 @@ run_test("loading_newer", () => {
             empty_msg_list: true,
         });
 
-        message_list.all.append_to_view = () => {};
-        message_list.all.append(message_range(444, 445), false);
+        all_messages_data.append(message_range(444, 445), false);
 
         test_happy_path({
             msg_list,

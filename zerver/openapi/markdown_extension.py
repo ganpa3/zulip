@@ -18,7 +18,13 @@ from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 
 import zerver.openapi.python_examples
-from zerver.openapi.openapi import get_openapi_description, get_openapi_fixture, openapi_spec
+from zerver.openapi.openapi import (
+    check_requires_administrator,
+    generate_openapi_fixture,
+    get_openapi_description,
+    get_openapi_summary,
+    openapi_spec,
+)
 
 MACRO_REGEXP = re.compile(
     r"\{generate_code_example(\(\s*(.+?)\s*\))*\|\s*(.+?)\s*\|\s*(.+?)\s*(\(\s*(.+)\s*\))?\}"
@@ -26,6 +32,7 @@ MACRO_REGEXP = re.compile(
 PYTHON_EXAMPLE_REGEX = re.compile(r"\# \{code_example\|\s*(.+?)\s*\}")
 JS_EXAMPLE_REGEX = re.compile(r"\/\/ \{code_example\|\s*(.+?)\s*\}")
 MACRO_REGEXP_DESC = re.compile(r"\{generate_api_description(\(\s*(.+?)\s*\))}")
+MACRO_REGEXP_TITLE = re.compile(r"\{generate_api_title(\(\s*(.+?)\s*\))}")
 
 PYTHON_CLIENT_CONFIG = """
 #!/usr/bin/env python3
@@ -70,6 +77,7 @@ DEFAULT_EXAMPLE = {
     "string": "demo",
     "boolean": False,
 }
+ADMIN_CONFIG_LANGUAGES = ["python", "javascript"]
 
 
 def parse_language_and_options(input_str: Optional[str]) -> Tuple[str, Dict[str, Any]]:
@@ -148,7 +156,8 @@ def render_javascript_code_example(
     pattern = fr'^add_example\(\s*"[^"]*",\s*{re.escape(json.dumps(function))},\s*\d+,\s*async \(client, console\) => \{{\n(.*?)^(?:\}}| *\}},\n)\);$'
     with open("zerver/openapi/javascript_examples.js") as f:
         m = re.search(pattern, f.read(), re.M | re.S)
-    assert m is not None
+    if m is None:
+        return []
     function_source_lines = dedent(m.group(1)).splitlines()
 
     snippets = extract_code_example(function_source_lines, [], JS_EXAMPLE_REGEX)
@@ -158,7 +167,11 @@ def render_javascript_code_example(
     else:
         config = JS_CLIENT_CONFIG.splitlines()
 
-    code_example = []
+    code_example = [
+        "{tab|js}\n",
+        "More examples and documentation can be found [here](https://github.com/zulip/zulip-js).",
+    ]
+
     code_example.append("```js")
     code_example.extend(config)
     code_example.append("(async () => {")
@@ -208,6 +221,7 @@ def get_openapi_param_example_value_as_string(
         # union type.  But for this logic's purpose, it's good enough
         # to just check the first parameter.
         param_type = param["schema"]["oneOf"][0]["type"]
+
     if param_type in ["object", "array"]:
         example_value = param.get("example", None)
         if not example_value:
@@ -225,7 +239,9 @@ cURL example."""
     else:
         example_value = param.get("example", DEFAULT_EXAMPLE[param_type])
         if isinstance(example_value, bool):
-            example_value = str(example_value).lower()
+            # Booleans are effectively JSON-encoded, in that we pass
+            # true/false, not the Python str(True) = "True"
+            jsonify = True
         if jsonify:
             example_value = json.dumps(example_value)
         if curl_argument:
@@ -334,7 +350,7 @@ def render_curl_example(
     exclude: Optional[List[str]] = None,
     include: Optional[List[str]] = None,
 ) -> List[str]:
-    """ A simple wrapper around generate_curl_example. """
+    """A simple wrapper around generate_curl_example."""
     parts = function.split(":")
     endpoint = parts[0]
     method = parts[1]
@@ -382,6 +398,9 @@ class APIMarkdownExtension(Extension):
         md.preprocessors.register(
             APIDescriptionPreprocessor(md, self.getConfigs()), "generate_api_description", 530
         )
+        md.preprocessors.register(
+            APITitlePreprocessor(md, self.getConfigs()), "generate_api_title", 531
+        )
 
 
 class APICodeExamplesPreprocessor(Preprocessor):
@@ -409,7 +428,10 @@ class APICodeExamplesPreprocessor(Preprocessor):
                         if argument:
                             text = self.render_fixture(function, name=argument)
                     elif key == "example":
-                        if argument == "admin_config=True":
+                        path, method = function.rsplit(":", 1)
+                        if language in ADMIN_CONFIG_LANGUAGES and check_requires_administrator(
+                            path, method
+                        ):
                             text = SUPPORTED_LANGUAGES[language]["render"](
                                 function, admin_config=True
                             )
@@ -431,17 +453,8 @@ class APICodeExamplesPreprocessor(Preprocessor):
         return lines
 
     def render_fixture(self, function: str, name: Optional[str] = None) -> List[str]:
-        fixture = []
-
         path, method = function.rsplit(":", 1)
-        fixture_dict = get_openapi_fixture(path, method, name)
-        fixture_json = json.dumps(fixture_dict, indent=4, sort_keys=True, separators=(",", ": "))
-
-        fixture.append("``` json")
-        fixture.extend(fixture_json.splitlines())
-        fixture.append("```")
-
-        return fixture
+        return generate_openapi_fixture(path, method, name)
 
 
 class APIDescriptionPreprocessor(Preprocessor):
@@ -480,6 +493,46 @@ class APIDescriptionPreprocessor(Preprocessor):
         description_dict = description_dict.replace("{{api_url}}", self.api_url)
         description.extend(description_dict.splitlines())
         return description
+
+
+class APITitlePreprocessor(Preprocessor):
+    def __init__(self, md: markdown.Markdown, config: Mapping[str, Any]) -> None:
+        super().__init__(md)
+        self.api_url = config["api_url"]
+
+    def run(self, lines: List[str]) -> List[str]:
+        done = False
+        while not done:
+            for line in lines:
+                loc = lines.index(line)
+                match = MACRO_REGEXP_TITLE.search(line)
+
+                if match:
+                    function = match.group(2)
+                    text = self.render_title(function)
+                    # The line that contains the directive to include the macro
+                    # may be preceded or followed by text or tags, in that case
+                    # we need to make sure that any preceding or following text
+                    # stays the same.
+                    line_split = MACRO_REGEXP_TITLE.split(line, maxsplit=0)
+                    preceding = line_split[0]
+                    following = line_split[-1]
+                    text = [preceding, *text, following]
+                    lines = lines[:loc] + text + lines[loc + 1 :]
+                    break
+            else:
+                done = True
+        return lines
+
+    def render_title(self, function: str) -> List[str]:
+        title: List[str] = []
+        path, method = function.rsplit(":", 1)
+        raw_title = get_openapi_summary(path, method)
+        title.extend(raw_title.splitlines())
+        title = ["# " + line for line in title]
+        if check_requires_administrator(path, method):
+            title.append("{!api-admin-only.md!}")
+        return title
 
 
 def makeExtension(*args: Any, **kwargs: str) -> APIMarkdownExtension:

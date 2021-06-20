@@ -1,4 +1,4 @@
-# Update a stream
+{generate_api_title(/streams/{stream_id}:patch)}
 
 {generate_api_description(/streams/{stream_id}:patch)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/streams/{stream_id}:patch|example}
+
+{generate_code_example(javascript)|/streams/{stream_id}:patch|example}
 
 {tab|curl}
 
@@ -23,10 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/streams/{stream_id}:patch|fixture(200)}
-
-An example JSON response for when the supplied stream does not exist:
 
 {generate_code_example|/streams/{stream_id}:patch|fixture(400)}

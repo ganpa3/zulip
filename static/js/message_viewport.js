@@ -1,8 +1,11 @@
 import $ from "jquery";
 
 import * as blueslip from "./blueslip";
-import {media_breakpoints} from "./css_variables";
+import {media_breakpoints_num} from "./css_variables";
+import * as message_lists from "./message_lists";
 import * as message_scroll from "./message_scroll";
+import * as notifications from "./notifications";
+import * as overlays from "./overlays";
 import * as rows from "./rows";
 import * as util from "./util";
 
@@ -237,7 +240,7 @@ function _visible_divs(
 }
 
 export function visible_groups(require_fully_visible) {
-    const selected_row = current_msg_list.selected_row();
+    const selected_row = message_lists.current.selected_row();
     if (selected_row === undefined || selected_row.length === 0) {
         return [];
     }
@@ -253,10 +256,10 @@ export function visible_groups(require_fully_visible) {
 }
 
 export function visible_messages(require_fully_visible) {
-    const selected_row = current_msg_list.selected_row();
+    const selected_row = message_lists.current.selected_row();
 
     function row_to_id(row) {
-        return current_msg_list.get(rows.id($(row)));
+        return message_lists.current.get(rows.id($(row)));
     }
 
     // Being simplistic about this, the smallest message is 25 px high.
@@ -313,7 +316,7 @@ export function is_narrow() {
     // This basically returns true when we hide the right sidebar for
     // the left_side_userlist skinny mode.  It would be nice to have a less brittle
     // test for this.
-    return window.innerWidth < Number(media_breakpoints.xl_min.slice(0, -2));
+    return window.innerWidth < media_breakpoints_num.xl;
 }
 
 export function system_initiated_animate_scroll(scroll_amount) {
@@ -387,7 +390,7 @@ export function keep_pointer_in_view() {
     // users will occasionally do big mouse scrolls, so this gives them
     // a pointer reasonably close to the middle of the screen.
     let candidate;
-    let next_row = current_msg_list.selected_row();
+    let next_row = message_lists.current.selected_row();
 
     if (next_row.length === 0) {
         return;
@@ -446,7 +449,7 @@ export function keep_pointer_in_view() {
         adjust(message_is_far_enough_up, rows.prev_visible);
     }
 
-    current_msg_list.select_id(rows.id(next_row), {from_scroll: true});
+    message_lists.current.select_id(rows.id(next_row), {from_scroll: true});
 }
 
 export function initialize() {
@@ -471,4 +474,15 @@ export function initialize() {
     $(document).on("message_selected.zulip wheel", () => {
         stop_auto_scrolling();
     });
+}
+
+export function is_visible_and_focused() {
+    if (
+        overlays.is_active() ||
+        !notifications.is_window_focused() ||
+        !$("#message_feed_container").is(":visible")
+    ) {
+        return false;
+    }
+    return true;
 }

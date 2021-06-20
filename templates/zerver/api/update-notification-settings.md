@@ -1,4 +1,4 @@
-# Update notification settings
+{generate_api_title(/settings/notifications:patch)}
 
 {generate_api_description(/settings/notifications:patch)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/settings/notifications:patch|example}
+
+{generate_code_example(javascript)|/settings/notifications:patch|example}
 
 {tab|curl}
 
@@ -30,6 +32,6 @@ those ones that were different than the already existing setting.
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/settings/notifications:patch|fixture(200)}
+
+{generate_code_example|/settings/notifications:patch|fixture(400)}

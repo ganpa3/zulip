@@ -1,4 +1,4 @@
-# Get a user by email
+{generate_api_title(/users/{email}:get)}
 
 {generate_api_description(/users/{email}:get)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/users/{email}:get|example}
+
+{generate_code_example(javascript)|/users/{email}:get|example}
 
 {tab|curl}
 
@@ -27,12 +29,10 @@ You may pass the `client_gravatar` or `include_custom_profile_fields` query para
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml}|/users/{email}:get}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/{email}:get|fixture(200)}
+
+{generate_code_example|/users/{email}:get|fixture(400)}

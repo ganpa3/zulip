@@ -1,4 +1,4 @@
-# Delete a message
+{generate_api_title(/messages/{message_id}:delete)}
 
 {generate_api_description(/messages/{message_id}:delete)}
 
@@ -9,7 +9,9 @@
 {start_tabs}
 {tab|python}
 
-{generate_code_example(python)|/messages/{message_id}:delete|example(admin_config=True)}
+{generate_code_example(python)|/messages/{message_id}:delete|example}
+
+{generate_code_example(javascript)|/messages/{message_id}:delete|example}
 
 {tab|curl}
 
@@ -25,15 +27,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/messages/{message_id}:delete|fixture(200)}
 
-An example JSON response for when the specified message does not exist:
-
-{generate_code_example|/messages/{message_id}:delete|fixture(400_0)}
-
-An example JSON response for when the user making the query does not
-have permission to delete the message:
-
-{generate_code_example|/messages/{message_id}:delete|fixture(400_1)}
+{generate_code_example|/messages/{message_id}:delete|fixture(400)}

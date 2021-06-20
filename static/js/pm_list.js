@@ -8,8 +8,8 @@ import * as pm_conversations from "./pm_conversations";
 import * as pm_list_dom from "./pm_list_dom";
 import * as stream_popover from "./stream_popover";
 import * as ui from "./ui";
+import * as ui_util from "./ui_util";
 import * as unread from "./unread";
-import * as unread_ui from "./unread_ui";
 import * as vdom from "./vdom";
 
 let prior_dom;
@@ -24,23 +24,11 @@ export function clear_for_testing() {
 // left corner of the app.  This was split out from stream_list.js.
 
 function get_filter_li() {
-    return $(".top_left_private_messages");
-}
-
-function update_count_in_dom(count_span, value_span, count) {
-    if (count === 0) {
-        count_span.hide();
-        value_span.text("");
-    } else {
-        count_span.show();
-        value_span.text(count);
-    }
+    return $(".top_left_private_messages .private_messages_header");
 }
 
 function set_count(count) {
-    const count_span = get_filter_li().find(".count");
-    const value_span = count_span.find(".value");
-    update_count_in_dom(count_span, value_span, count);
+    ui_util.update_unread_count_in_dom(get_filter_li(), count);
 }
 
 function remove_expanded_private_messages() {
@@ -87,11 +75,9 @@ export function _get_convos() {
         const is_active = user_ids_string === active_user_ids_string;
 
         let user_circle_class;
-        let fraction_present;
 
         if (is_group) {
             user_circle_class = "user_circle_fraction";
-            fraction_present = buddy_data.huddle_fraction_present(user_ids_string);
         } else {
             const user_id = Number.parseInt(user_ids_string, 10);
             user_circle_class = buddy_data.get_user_circle_class(user_id);
@@ -110,7 +96,6 @@ export function _get_convos() {
             is_active,
             url: hash_util.pm_with_uri(reply_to),
             user_circle_class,
-            fraction_present,
             is_group,
         };
         display_messages.push(display_message);
@@ -169,8 +154,4 @@ export function expand() {
 export function update_dom_with_unread_counts(counts) {
     update_private_messages();
     set_count(counts.private_message_count);
-    unread_ui.set_count_toggle_button(
-        $("#userlist-toggle-unreadcount"),
-        counts.private_message_count,
-    );
 }

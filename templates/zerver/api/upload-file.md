@@ -1,4 +1,4 @@
-# Upload a file
+{generate_api_title(/user_uploads:post)}
 
 {generate_api_description(/user_uploads:post)}
 
@@ -9,6 +9,8 @@
 {tab|python}
 
 {generate_code_example(python)|/user_uploads:post|example}
+
+{generate_code_example(javascript)|/user_uploads:post|example}
 
 {tab|curl}
 
@@ -32,12 +34,10 @@ to 25MB.
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/user_uploads:post}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/user_uploads:post|fixture(200)}
+
+{generate_code_example|/user_uploads:post|fixture(400)}

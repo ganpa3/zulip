@@ -1,4 +1,4 @@
-# Set "typing" status
+{generate_api_title(/typing:post)}
 
 {generate_api_description(/typing:post)}
 
@@ -9,15 +9,11 @@
 
 {generate_code_example(python)|/typing:post|example}
 
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
-
 {generate_code_example(javascript)|/typing:post|example}
 
 {tab|curl}
 
-{generate_code_example(curl)|/typing:post|example}
+{generate_code_example(curl, exclude=["topic"])|/typing:post|example}
 
 {end_tabs}
 
@@ -29,6 +25,6 @@ More examples and documentation can be found [here](https://github.com/zulip/zul
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/typing:post|fixture(200)}
+
+{generate_code_example|/typing:post|fixture(400)}

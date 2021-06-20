@@ -1,4 +1,4 @@
-# Remove an emoji reaction
+{generate_api_title(/messages/{message_id}/reactions:delete)}
 
 {generate_api_description(/messages/{message_id}/reactions:delete)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/messages/{message_id}/reactions:delete|example}
+
+{generate_code_example(javascript)|/messages/{message_id}/reactions:delete|example}
 
 {tab|curl}
 
@@ -25,6 +27,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/messages/{message_id}/reactions:delete|fixture(200)}
+
+{generate_code_example|/messages/{message_id}/reactions:delete|fixture(400)}

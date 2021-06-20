@@ -1,4 +1,4 @@
-# Update subscription settings
+{generate_api_title(/users/me/subscriptions/properties:post)}
 
 {generate_api_description(/users/me/subscriptions/properties:post)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/users/me/subscriptions/properties:post|example}
+
+{generate_code_example(javascript)|/users/me/subscriptions/properties:post|example}
 
 {tab|curl}
 
@@ -21,12 +23,10 @@
 
 ## Response
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/users/me/subscriptions/properties:post}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/me/subscriptions/properties:post|fixture(200)}
+
+{generate_code_example|/users/me/subscriptions/properties:post|fixture(400)}

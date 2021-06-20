@@ -2,12 +2,10 @@
 
 const {strict: assert} = require("assert");
 
-const {mock_cjs, mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
+const {mock_esm, set_global, zrequire} = require("../zjsunit/namespace");
 const {run_test} = require("../zjsunit/test");
 const blueslip = require("../zjsunit/zblueslip");
 const $ = require("../zjsunit/zjquery");
-
-mock_cjs("jquery", $);
 
 const sample_events = [
     {
@@ -45,7 +43,7 @@ const fake_poll_widget = {
     activate(data) {
         is_widget_activated = true;
         widget_elem = data.elem;
-        assert(widget_elem.hasClass("widget-content"));
+        assert.ok(widget_elem.hasClass("widget-content"));
         widget_elem.handle_events = (e) => {
             is_event_handled = true;
             assert.notDeepStrictEqual(e, events);
@@ -56,26 +54,26 @@ const fake_poll_widget = {
     },
 };
 
+const message_lists = mock_esm("../../static/js/message_lists", {current: {}});
 const narrow_state = mock_esm("../../static/js/narrow_state");
 mock_esm("../../static/js/poll_widget", fake_poll_widget);
 
-const current_msg_list = set_global("current_msg_list", {});
 set_global("document", "document-stub");
 
 const widgetize = zrequire("widgetize");
 
 function test(label, f) {
-    run_test(label, (override) => {
+    run_test(label, ({override}) => {
         events = [...sample_events];
         widget_elem = undefined;
         is_event_handled = false;
         is_widget_activated = false;
         widgetize.clear_for_testing();
-        f(override);
+        f({override});
     });
 }
 
-test("activate", (override) => {
+test("activate", ({override}) => {
     // Both widgetize.activate and widgetize.handle_event are tested
     // here to use the "caching" of widgets
     const row = $.create("<stub message row>");
@@ -105,19 +103,19 @@ test("activate", (override) => {
     message_content.append = (elem) => {
         is_widget_elem_inserted = true;
         assert.equal(elem, widget_elem);
-        assert(elem.hasClass("widget-content"));
+        assert.ok(elem.hasClass("widget-content"));
     };
 
     is_widget_elem_inserted = false;
     is_widget_activated = false;
     is_event_handled = false;
-    assert(!widgetize.widget_contents.has(opts.message.id));
+    assert.ok(!widgetize.widget_contents.has(opts.message.id));
 
     widgetize.activate(opts);
 
-    assert(is_widget_elem_inserted);
-    assert(is_widget_activated);
-    assert(is_event_handled);
+    assert.ok(is_widget_elem_inserted);
+    assert.ok(is_widget_activated);
+    assert.ok(is_event_handled);
     assert.equal(widgetize.widget_contents.get(opts.message.id), widget_elem);
 
     is_widget_elem_inserted = false;
@@ -126,9 +124,9 @@ test("activate", (override) => {
 
     widgetize.activate(opts);
 
-    assert(is_widget_elem_inserted);
-    assert(!is_widget_activated);
-    assert(!is_event_handled);
+    assert.ok(is_widget_elem_inserted);
+    assert.ok(!is_widget_activated);
+    assert.ok(!is_event_handled);
 
     narrow_active = true;
     is_widget_elem_inserted = false;
@@ -137,9 +135,9 @@ test("activate", (override) => {
 
     widgetize.activate(opts);
 
-    assert(!is_widget_elem_inserted);
-    assert(!is_widget_activated);
-    assert(!is_event_handled);
+    assert.ok(!is_widget_elem_inserted);
+    assert.ok(!is_widget_activated);
+    assert.ok(!is_event_handled);
 
     blueslip.expect("warn", "unknown widget_type");
     narrow_active = false;
@@ -149,17 +147,17 @@ test("activate", (override) => {
     opts.widget_type = "invalid_widget";
 
     widgetize.activate(opts);
-    assert(!is_widget_elem_inserted);
-    assert(!is_widget_activated);
-    assert(!is_event_handled);
+    assert.ok(!is_widget_elem_inserted);
+    assert.ok(!is_widget_activated);
+    assert.ok(!is_event_handled);
     assert.equal(blueslip.get_test_logs("warn")[0].more_info, "invalid_widget");
 
     opts.widget_type = "tictactoe";
 
     widgetize.activate(opts);
-    assert(!is_widget_elem_inserted);
-    assert(!is_widget_activated);
-    assert(!is_event_handled);
+    assert.ok(!is_widget_elem_inserted);
+    assert.ok(!is_widget_activated);
+    assert.ok(!is_event_handled);
 
     /* Testing widgetize.handle_events */
     const post_activate_event = {
@@ -176,19 +174,19 @@ test("activate", (override) => {
     };
     is_event_handled = false;
     widgetize.handle_event(post_activate_event);
-    assert(is_event_handled);
+    assert.ok(is_event_handled);
 
     is_event_handled = false;
     post_activate_event.message_id = 1000;
     widgetize.handle_event(post_activate_event);
-    assert(!is_event_handled);
+    assert.ok(!is_event_handled);
 
     /* Test narrow change message update */
-    override(current_msg_list, "get", (idx) => {
+    override(message_lists.current, "get", (idx) => {
         assert.equal(idx, 2001);
         return {};
     });
-    override(current_msg_list, "get_row", (idx) => {
+    override(message_lists.current, "get_row", (idx) => {
         assert.equal(idx, 2001);
         return row;
     });

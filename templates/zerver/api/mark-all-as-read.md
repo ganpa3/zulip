@@ -1,4 +1,4 @@
-# Mark all messages as read
+{generate_api_title(/mark_all_as_read:post)}
 
 {generate_api_description(/mark_all_as_read:post)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/mark_all_as_read:post|example}
+
+{generate_code_example(javascript)|/mark_all_as_read:post|example}
 
 {tab|curl}
 
@@ -23,14 +25,13 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/mark_all_as_read:post|fixture(200)}
 
+{generate_code_example|/mark_all_as_read:post|fixture(400)}
 
-# Mark messages in a stream as read
+{generate_api_title(/mark_stream_as_read:post)}
 
-Mark all the unread messages in a stream as read.
+{generate_api_description(/mark_stream_as_read:post)}
 
 `POST {{ api_url }}/v1/mark_stream_as_read`
 
@@ -40,6 +41,8 @@ Mark all the unread messages in a stream as read.
 {tab|python}
 
 {generate_code_example(python)|/mark_stream_as_read:post|example}
+
+{generate_code_example(javascript)|/mark_all_as_read:post|example}
 
 {tab|curl}
 
@@ -55,14 +58,14 @@ Mark all the unread messages in a stream as read.
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/mark_stream_as_read:post|fixture(200)}
 
+{generate_code_example|/mark_stream_as_read:post|fixture(400)}
 
 # Mark messages in a topic as read
+{generate_api_title(/mark_topic_as_read:post)}
 
-Mark all the unread messages in a topic as read.
+{generate_api_description(/mark_all_as_read:post)}
 
 `POST {{ api_url }}/v1/mark_topic_as_read`
 
@@ -72,6 +75,8 @@ Mark all the unread messages in a topic as read.
 {tab|python}
 
 {generate_code_example(python)|/mark_topic_as_read:post|example}
+
+{generate_code_example(javascript)|/mark_all_as_read:post|example}
 
 {tab|curl}
 
@@ -87,6 +92,6 @@ Mark all the unread messages in a topic as read.
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/mark_topic_as_read:post|fixture(200)}
+
+{generate_code_example|/mark_topic_as_read:post|fixture(400)}

@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 set -eu
 
-version=3.2.2
-binary="shfmt_v${version}_linux_amd64"
-sha256=3a32a69286a19491a81fcd854154f0d886c379ff28d99e32d5594490b8bbef4b
+version=3.3.0
+arch="$(uname -m)"
+
+case $arch in
+    "x86_64")
+        binary="shfmt_v${version}_linux_amd64"
+        sha256=9ad8751cea92e0ffbfd6bb72208434f3a86e7319fd10b56def204c24ee1d9fde
+        ;;
+
+    "aarch64")
+        binary="shfmt_v${version}_linux_arm64"
+        sha256=abf9bbc7027f5f5ba691bc48a55a2fc531c05ea88245ede989d67199687cadb5
+        ;;
+esac
 
 check_version() {
     out="$(shfmt --version 2>/dev/null)" && [ "$out" = "v$version" ]

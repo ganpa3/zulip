@@ -1,4 +1,4 @@
-# Deactivate a user
+{generate_api_title(/users/{user_id}:delete)}
 
 {generate_api_description(/users/{user_id}:delete)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/users/{user_id}:delete|example}
+
+{generate_code_example(javascript)|/users/{user_id}:delete|example}
 
 {tab|curl}
 
@@ -23,11 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/{user_id}:delete|fixture(200)}
-
-An example JSON error response when attempting to deactivate the only
-organization owner in an organization:
 
 {generate_code_example|/users/{user_id}:delete|fixture(400)}

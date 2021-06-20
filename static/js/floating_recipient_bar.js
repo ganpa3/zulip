@@ -1,6 +1,7 @@
 import $ from "jquery";
 
 import * as blueslip from "./blueslip";
+import * as message_lists from "./message_lists";
 import * as message_store from "./message_store";
 import * as rows from "./rows";
 import * as timerender from "./timerender";
@@ -8,7 +9,11 @@ import * as timerender from "./timerender";
 let is_floating_recipient_bar_showing = false;
 
 function top_offset(elem) {
-    return elem.offset().top - $("#message_view_header").safeOuterHeight();
+    return (
+        elem.offset().top -
+        $("#message_view_header").safeOuterHeight() -
+        $("#navbar_alerts_wrapper").height()
+    );
 }
 
 export function first_visible_message(bar) {
@@ -19,8 +24,9 @@ export function first_visible_message(bar) {
     // overlaps the floating recipient bar's space (since you ).
 
     const messages = bar.children(".message_row");
-    const frb_bottom = get_frb_bottom();
-    const frb_top = frb_bottom - 25;
+    const frb = $("#floating_recipient_bar");
+    const frb_top = top_offset(frb);
+    const frb_bottom = frb_top + frb.safeOuterHeight();
     let result;
 
     for (const message_element of messages) {
@@ -106,14 +112,6 @@ export function get_date(elem) {
     const rendered_date = timerender.render_date(time, undefined, today)[0].outerHTML;
 
     return rendered_date;
-}
-
-export function get_frb_bottom() {
-    const bar = $("#floating_recipient_bar");
-    const bar_top = top_offset(bar);
-    const bar_bottom = bar_top + bar.safeOuterHeight();
-
-    return bar_bottom;
 }
 
 export function relevant_recipient_bars() {
@@ -238,7 +236,7 @@ export function candidate_recipient_bar() {
     // bars that is still above the fold.
 
     // Start with the pointer's current location.
-    const selected_row = current_msg_list.selected_row();
+    const selected_row = message_lists.current.selected_row();
 
     if (selected_row === undefined || selected_row.length === 0) {
         return undefined;

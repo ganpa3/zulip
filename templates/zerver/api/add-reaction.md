@@ -1,4 +1,4 @@
-# Add an emoji reaction
+{generate_api_title(/messages/{message_id}/reactions:post)}
 
 {generate_api_description(/messages/{message_id}/reactions:post)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/messages/{message_id}/reactions:post|example}
+
+{generate_code_example(javascript)|/messages/{message_id}/reactions:post|example}
 
 {tab|curl}
 
@@ -24,6 +26,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/messages/{message_id}/reactions:post|fixture(200)}
+
+{generate_code_example|/messages/{message_id}/reactions:post|fixture(400)}

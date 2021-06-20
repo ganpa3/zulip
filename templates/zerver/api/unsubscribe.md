@@ -1,4 +1,4 @@
-# Unsubscribe from a stream
+{generate_api_title(/users/me/subscriptions:delete)}
 
 {generate_api_description(/users/me/subscriptions:delete)}
 
@@ -8,10 +8,6 @@
 {tab|python}
 
 {generate_code_example(python)|/users/me/subscriptions:delete|example}
-
-{tab|js}
-
-More examples and documentation can be found [here](https://github.com/zulip/zulip-js).
 
 {generate_code_example(javascript)|/users/me/subscriptions:delete|example}
 
@@ -32,16 +28,10 @@ administrative privileges.
 
 {generate_api_arguments_table|zulip.yaml|/users/me/subscriptions:delete}
 
-#### Return values
-
 {generate_return_values_table|zulip.yaml|/users/me/subscriptions:delete}
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/users/me/subscriptions:delete|fixture(200)}
-
-A typical failed JSON response for when the target stream does not exist:
 
 {generate_code_example|/users/me/subscriptions:delete|fixture(400)}

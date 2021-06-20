@@ -1,4 +1,4 @@
-# Delete a user group
+{generate_api_title(/user_groups/{user_group_id}:delete)}
 
 {generate_api_description(/user_groups/{user_group_id}:delete)}
 
@@ -8,6 +8,8 @@
 {tab|python}
 
 {generate_code_example(python)|/user_groups/{user_group_id}:delete|example}
+
+{generate_code_example(javascript)|/user_groups/{user_group_id}:delete|example}
 
 {tab|curl}
 
@@ -23,10 +25,6 @@
 
 #### Example response
 
-A typical successful JSON response may look like:
-
 {generate_code_example|/user_groups/{user_group_id}:delete|fixture(200)}
-
-An example JSON error response for an invalid user group id:
 
 {generate_code_example|/user_groups/{user_group_id}:delete|fixture(400)}
