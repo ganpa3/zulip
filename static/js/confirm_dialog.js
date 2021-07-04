@@ -1,5 +1,4 @@
 import * as dialog_widget from "./dialog_widget";
-import {$t_html} from "./i18n";
 
 export function launch(conf) {
     dialog_widget.launch({
@@ -7,7 +6,6 @@ export function launch(conf) {
         close_on_submit: true,
         danger_submit_button: true,
         focus_submit_on_open: true,
-        html_submit_button: $t_html({defaultMessage: "Confirm"}),
         // Used to control button colors in the template.
     });
 }

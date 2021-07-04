@@ -671,6 +671,7 @@ export function register_topic_handlers() {
             html_heading: $t_html({defaultMessage: "Delete topic"}),
             help_link: "/help/delete-a-topic",
             html_body,
+            html_submit_button: $t_html({defaultMessage: "Delete"}),
             on_click: () => {
                 message_edit.delete_topic(stream_id, topic);
             },

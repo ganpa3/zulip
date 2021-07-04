@@ -1171,6 +1171,7 @@ export function build_page() {
             html_heading: $t_html({defaultMessage: "Deactivate organization"}),
             help_link: "/help/deactivate-your-organization",
             html_body,
+            html_submit_button: $t_html({defaultMessage: "Deactivate"}),
             on_click: do_deactivate_realm,
             fade: true,
         });

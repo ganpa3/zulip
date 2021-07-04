@@ -603,6 +603,7 @@ export function set_up() {
             parent: modal_parent,
             html_heading: $t_html({defaultMessage: "Deactivate your account"}),
             html_body,
+            html_submit_button: $t_html({defaultMessage: "Deactivate"}),
             on_click: handle_confirm,
             help_link: "/help/deactivate-your-account",
             fade: true,
