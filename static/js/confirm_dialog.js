@@ -101,6 +101,7 @@ export function launch(conf) {
         } else {
             overlays.close_modal("#confirm_dialog_modal");
         }
+        $("#confirm_dialog_error").html("");
         conf.on_click();
     });
 
