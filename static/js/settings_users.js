@@ -447,7 +447,6 @@ function confirm_deactivation(row, user_id, status_field) {
         html_body,
         html_yes_button: $t_html({defaultMessage: "Deactivate"}),
         on_click: handle_confirm,
-        fade: true,
     });
 }
 

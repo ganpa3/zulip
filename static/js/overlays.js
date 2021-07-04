@@ -1,4 +1,5 @@
 import $ from "jquery";
+import Micromodal from "micromodal";
 
 import * as blueslip from "./blueslip";
 import * as browser_history from "./browser_history";
@@ -19,7 +20,8 @@ export function is_active() {
 }
 
 export function is_modal_open() {
-    return $(".modal").hasClass("in");
+    // Check for both Bootstrap and Micromodal modals.
+    return $(".modal").hasClass("in") || $(".micromodal").hasClass("modal--open");
 }
 
 export function info_overlay_open() {
@@ -64,6 +66,12 @@ export function active_modal() {
     if (!is_modal_open()) {
         blueslip.error("Programming error — Called active_modal when there is no modal open");
         return undefined;
+    }
+
+    // Check for Micromodal modals.
+    const micromodal = $(".micromodal.modal--open");
+    if (micromodal.length) {
+        return `#${CSS.escape(micromodal.attr("id"))}`;
     }
     return `#${CSS.escape($(".modal.in").attr("id"))}`;
 }
@@ -213,6 +221,12 @@ export function close_active_modal() {
     if (!is_modal_open()) {
         blueslip.warn("close_active_modal() called without checking is_modal_open()");
         return;
+    }
+
+    // Check for Micromodal modals.
+    const micromodal = $(".micromodal.modal--open");
+    if (micromodal.length) {
+        Micromodal.close(`${CSS.escape(micromodal.attr("id"))}`);
     }
 
     $(".modal.in").modal("hide").attr("aria-hidden", true);

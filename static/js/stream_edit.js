@@ -917,7 +917,6 @@ export function initialize() {
                 html_body,
                 html_yes_button: $t_html({defaultMessage: "Unsubscribe"}),
                 on_click: remove_user_from_private_stream,
-                fade: true,
             });
             return;
         }
@@ -958,7 +957,7 @@ export function initialize() {
         }
 
         function do_archive_stream() {
-            const stream_id = $(".confirm_dialog_yes_button").data("stream-id");
+            const stream_id = $("#confirm-dialog-yes-button").data("stream-id");
             if (!stream_id) {
                 ui_report.client_error(
                     $t_html({defaultMessage: "Invalid stream id"}),
@@ -984,10 +983,9 @@ export function initialize() {
             html_body,
             html_yes_button: $t_html({defaultMessage: "Archive"}),
             on_click: do_archive_stream,
-            fade: true,
         });
 
-        $(".confirm_dialog_yes_button").attr("data-stream-id", stream_id);
+        $("#confirm-dialog-yes-button").attr("data-stream-id", stream_id);
     });
 
     $("#subscriptions_table").on("click", ".stream-row", function (e) {

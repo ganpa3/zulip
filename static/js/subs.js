@@ -959,7 +959,7 @@ export function unsubscribe_from_private_stream(sub) {
         html_body,
         html_yes_button: $t_html({defaultMessage: "Unsubscribe"}),
         on_click: unsubscribe_from_stream,
-        fade: true,
+        disable_focus_yes_button: true,
     });
 }
 
