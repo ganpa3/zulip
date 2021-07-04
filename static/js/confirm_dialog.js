@@ -16,9 +16,8 @@ import * as overlays from "./overlays";
         1) We create DOM on the fly, and we remove
            the DOM once it's closed.
 
-        2) We attach the DOM for the modal to conf.parent,
-           and this temporary DOM location will influence
-           how styles work.
+        2) We attach the DOM for the modal to the body element
+           to avoid style interference from other elements.
 
         3) The cancel button is driven by bootstrap.js.
 
@@ -64,7 +63,6 @@ export function launch(conf) {
         "html_body",
         "html_yes_button",
         "on_click",
-        "parent",
     ];
 
     for (const f of conf_fields) {
@@ -73,7 +71,7 @@ export function launch(conf) {
         }
     }
 
-    conf.parent.append(confirm_dialog);
+    $("body").append(confirm_dialog);
 
     // Close any existing modals--on settings screens you can
     // have multiple buttons that need confirmation.
@@ -112,7 +110,7 @@ export function launch(conf) {
     // Open the modal
     overlays.open_modal("#confirm_dialog_modal");
 
-    conf.parent.on("shown.bs.modal", () => {
+    $("body").on("shown.bs.modal", () => {
         yes_button.trigger("focus");
     });
 }

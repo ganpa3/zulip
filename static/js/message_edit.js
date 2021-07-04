@@ -951,7 +951,6 @@ export function edit_last_sent_message() {
 
 export function delete_message(msg_id) {
     const html_body = render_delete_message_modal();
-    const modal_parent = $("#main_div");
 
     function do_delete_message() {
         currently_deleting_messages.push(msg_id);
@@ -980,7 +979,6 @@ export function delete_message(msg_id) {
     }
 
     confirm_dialog.launch({
-        parent: modal_parent,
         html_heading: $t_html({defaultMessage: "Delete message"}),
         html_body,
         html_yes_button: $t_html({defaultMessage: "Delete"}),
