@@ -56,12 +56,14 @@ async function test_add_invalid_linkifier_pattern(page: Page): Promise<void> {
 
 async function test_edit_linkifier(page: Page): Promise<void> {
     await page.click(".linkifier_row .edit");
-    await page.waitForFunction(() => document.activeElement?.id === "dialog_widget_modal");
+    await page.waitForFunction(
+        () => document.activeElement?.parentElement?.id === "dialog_widget_modal",
+    );
     await common.fill_form(page, "form.linkifier-edit-form", {
         pattern: "(?P<num>[0-9a-f]{40})",
         url_format_string: "https://trac.example.com/commit/%(num)s",
     });
-    await page.click(".dialog_submit_button");
+    await page.click("#dialog_submit_button");
 
     await page.waitForSelector("#dialog_widget_modal", {hidden: true});
     await common.wait_for_modal_to_close(page);
@@ -81,12 +83,14 @@ async function test_edit_linkifier(page: Page): Promise<void> {
 
 async function test_edit_invalid_linkifier(page: Page): Promise<void> {
     await page.click(".linkifier_row .edit");
-    await page.waitForFunction(() => document.activeElement?.id === "dialog_widget_modal");
+    await page.waitForFunction(
+        () => document.activeElement?.parentElement?.id === "dialog_widget_modal",
+    );
     await common.fill_form(page, "form.linkifier-edit-form", {
         pattern: "####",
         url_format_string: "####",
     });
-    await page.click(".dialog_submit_button");
+    await page.click("#dialog_submit_button");
 
     const edit_linkifier_pattern_status_selector = "div#dialog_error";
     await page.waitForSelector(edit_linkifier_pattern_status_selector, {visible: true});
@@ -110,7 +114,7 @@ async function test_edit_invalid_linkifier(page: Page): Promise<void> {
         "Failed: Enter a valid URL.,Invalid URL format string.",
     );
 
-    await page.click(".close-modal-btn");
+    await page.click("#dialog_cancel_button");
     await page.waitForSelector("#dialog_widget_modal", {hidden: true});
 
     await page.waitForSelector(".linkifier_row", {visible: true});

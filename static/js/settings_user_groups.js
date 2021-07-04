@@ -362,7 +362,6 @@ export function set_up() {
             html_body,
             html_submit_button: $t_html({defaultMessage: "Delete"}),
             on_click: delete_user_group,
-            fade: true,
         });
     });
 

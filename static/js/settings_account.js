@@ -562,8 +562,7 @@ export function set_up() {
             channel.del({
                 url: "/json/users/me",
                 success() {
-                    dialog_widget.hide_dialog_spinner();
-                    overlays.close_modal("#dialog_widget_modal");
+                    dialog_widget.close_modal();
                     window.location.href = "/login/";
                 },
                 error(xhr) {
@@ -588,8 +587,7 @@ export function set_up() {
                             rendered_error_msg = error_last_user;
                         }
                     }
-                    dialog_widget.hide_dialog_spinner();
-                    overlays.close_modal("#dialog_widget_modal");
+                    dialog_widget.close_modal();
                     $("#account-settings-status")
                         .addClass("alert-error")
                         .html(rendered_error_msg)
@@ -604,8 +602,8 @@ export function set_up() {
             html_submit_button: $t_html({defaultMessage: "Deactivate"}),
             on_click: handle_confirm,
             help_link: "/help/deactivate-your-account",
-            fade: true,
             loading_spinner: true,
+            disable_focus_yes_button: true,
         });
     });
 

@@ -55,7 +55,7 @@ function open_linkifier_edit_form(linkifier_id) {
     const modal_parent = $("#linkifier-edit-form-modal-container");
 
     function submit_linkifier_form() {
-        const change_linkifier_button = $(".dialog_submit_button");
+        const change_linkifier_button = $("#dialog_submit_button");
         change_linkifier_button.prop("disabled", true);
 
         const modal = $("#dialog_widget_modal");
