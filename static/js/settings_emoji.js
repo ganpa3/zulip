@@ -269,7 +269,6 @@ export function set_up() {
                     html_body,
                     html_yes_button: $t_html({defaultMessage: "Override"}),
                     on_click: submit_custom_emoji_request,
-                    fade: true,
                 });
             } else {
                 submit_custom_emoji_request();

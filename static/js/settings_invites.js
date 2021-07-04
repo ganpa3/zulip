@@ -97,8 +97,8 @@ function populate_invites(invites_data) {
 }
 
 function do_revoke_invite() {
-    const modal_invite_id = $(".confirm_dialog_yes_button").attr("data-invite-id");
-    const modal_is_multiuse = $(".confirm_dialog_yes_button").attr("data-is-multiuse");
+    const modal_invite_id = $("#confirm-dialog-yes-button").attr("data-invite-id");
+    const modal_is_multiuse = $("#confirm-dialog-yes-button").attr("data-is-multiuse");
     const revoke_button = meta.current_revoke_invite_user_modal_row.find("button.revoke");
 
     if (modal_invite_id !== meta.invite_id || modal_is_multiuse !== meta.is_multiuse) {
@@ -129,7 +129,7 @@ function do_revoke_invite() {
 }
 
 function do_resend_invite() {
-    const modal_invite_id = $(".confirm_dialog_yes_button").attr("data-invite-id");
+    const modal_invite_id = $("#confirm-dialog-yes-button").attr("data-invite-id");
     const resend_button = meta.current_resend_invite_user_modal_row.find("button.resend");
 
     if (modal_invite_id !== meta.invite_id) {
@@ -206,11 +206,10 @@ export function on_load_success(invites_data, initialize_event_handlers) {
             html_body,
             html_yes_button: $t_html({defaultMessage: "Revoke"}),
             on_click: do_revoke_invite,
-            fade: true,
         });
 
-        $(".confirm_dialog_yes_button").attr("data-invite-id", meta.invite_id);
-        $(".confirm_dialog_yes_button").attr("data-is-multiuse", meta.is_multiuse);
+        $("#confirm-dialog-yes-button").attr("data-invite-id", meta.invite_id);
+        $("#confirm-dialog-yes-button").attr("data-is-multiuse", meta.is_multiuse);
     });
 
     $(".admin_invites_table").on("click", ".resend", (e) => {
@@ -230,9 +229,8 @@ export function on_load_success(invites_data, initialize_event_handlers) {
             html_body,
             html_yes_button: $t_html({defaultMessage: "Resend"}),
             on_click: do_resend_invite,
-            fade: true,
         });
 
-        $(".confirm_dialog_yes_button").attr("data-invite-id", meta.invite_id);
+        $("#confirm-dialog-yes-button").attr("data-invite-id", meta.invite_id);
     });
 }
