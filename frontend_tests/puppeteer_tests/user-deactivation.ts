@@ -35,7 +35,7 @@ async function test_deactivate_user(page: Page): Promise<void> {
             page,
             "#confirm_dialog_modal .confirm_dialog_yes_button",
         ),
-        "Confirm",
+        "Deactivate",
         "Deactivate button has incorrect text.",
     );
     await page.click("#confirm_dialog_modal .confirm_dialog_yes_button");

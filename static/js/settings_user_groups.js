@@ -366,7 +366,7 @@ export function set_up() {
             parent: modal_parent,
             html_heading: $t_html({defaultMessage: "Delete user group"}),
             html_body,
-            html_yes_button: $t_html({defaultMessage: "Confirm"}),
+            html_yes_button: $t_html({defaultMessage: "Delete"}),
             on_click: delete_user_group,
             fade: true,
         });
