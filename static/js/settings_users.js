@@ -420,7 +420,6 @@ function get_human_profile_data(fields_user_pills) {
 
 function confirm_deactivation(row, user_id, status_field) {
     const user = people.get_by_user_id(user_id);
-    const modal_parent = $("#settings_content .organization-box");
     const opts = {
         username: user.full_name,
         email: user.email,
@@ -444,7 +443,6 @@ function confirm_deactivation(row, user_id, status_field) {
     }
 
     confirm_dialog.launch({
-        parent: modal_parent,
         html_heading: $t_html({defaultMessage: "Deactivate {email}"}, {email: user.email}),
         html_body,
         html_yes_button: $t_html({defaultMessage: "Deactivate"}),
