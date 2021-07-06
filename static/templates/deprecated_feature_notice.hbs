@@ -1,16 +1,18 @@
-<div class="modal hide modal-bg new-style" id="deprecation-notice-modal" role="dialog"
-  aria-labelledby="deprecation-notice-label" aria-hidden="true">
-
-    <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="{{t 'Close' }}"><span aria-hidden="true">&times;</span></button>
-        <h3 id="deprecation-notice-label">{{t "Deprecation notice" }}</h3>
-    </div>
-
-    <div class="modal-body">
-        <p id="deprecation-notice-message">{{message}}</p>
-    </div>
-
-    <div class="modal-footer">
-        <button type="button" class="button rounded" id="close-deprecation-notice" data-dismiss="modal">{{t "Got it" }}</button>
+<div class="micromodal" id="deprecation-notice-modal" aria-hidden="true">
+    <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+        <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="deprecation-notice-title">
+            <header class="modal__header">
+                <h1 class="modal__title" id="deprecation-notice-title">
+                    {{t "Deprecation notice" }}
+                </h1>
+                <button class="modal__close" aria-label="{{t 'Close modal' }}" data-micromodal-close></button>
+            </header>
+            <main class="modal__content">
+                <p>{{message}}</p>
+            </main>
+            <footer class="modal__footer">
+                <button class="button rounded modal__btn modal__btn-primary" id="close-deprecation-notice" aria-label="{{t 'Close this dialog window' }}" data-micromodal-close>{{t "Got it" }}</button>
+            </footer>
+        </div>
     </div>
 </div>

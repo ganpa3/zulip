@@ -47,11 +47,17 @@ export function maybe_show_deprecation_notice(key) {
         const rendered_deprecated_feature_notice = render_deprecated_feature_notice({message});
         const deprecated_feature_notice = $(rendered_deprecated_feature_notice);
 
-        $(".app").append(deprecated_feature_notice);
+        $("body").append(deprecated_feature_notice);
 
-        overlays.open_modal("#deprecation-notice-modal", {autoremove: true});
-        $("#deprecation-notice-message").text(message);
-        $("#close-deprecation-notice").trigger("focus");
+        overlays.open_modal("deprecation-notice-modal", {
+            micromodal: true,
+            micromodal_opts: {
+                onShow: () => {
+                    $("#close-deprecation-notice").trigger("focus");
+                },
+            },
+        });
+
         shown_deprecation_notices.push(key);
         if (localstorage.supported()) {
             localStorage.setItem(
