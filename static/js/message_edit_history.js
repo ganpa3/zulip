@@ -80,10 +80,10 @@ export function fetch_and_render_message_history(message) {
 
 export function show_history(message) {
     const rendered_message_history = render_message_history_modal();
-    $("#message_feed_container").append(rendered_message_history);
+    $("body").append(rendered_message_history);
 
     fetch_and_render_message_history(message);
-    overlays.open_modal("#message-edit-history", {autoremove: true});
+    overlays.open_modal("message-edit-history", {micromodal: true});
 }
 
 export function initialize() {
