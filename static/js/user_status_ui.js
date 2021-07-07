@@ -7,18 +7,18 @@ import * as people from "./people";
 import * as user_status from "./user_status";
 
 export function input_field() {
-    return $("#set_user_status_modal input.user_status");
+    return $("#set-user-status-modal input.user_status");
 }
 
 export function submit_button() {
-    return $("#set_user_status_modal .set_user_status");
+    return $("#set-user-status-modal .modal__btn-primary");
 }
 
 export function open_user_status_modal() {
     const rendered_set_status_overlay = render_set_status_overlay();
-    $(".app").append(rendered_set_status_overlay);
+    $("body").append(rendered_set_status_overlay);
 
-    overlays.open_modal("#set_user_status_modal", {autoremove: true});
+    overlays.open_modal("set-user-status-modal", {micromodal: true});
 
     const user_id = people.my_current_user_id();
     const old_status_text = user_status.get_status_text(user_id);
@@ -33,7 +33,7 @@ export function open_user_status_modal() {
 }
 
 export function close_user_status_modal() {
-    overlays.close_modal("#set_user_status_modal");
+    overlays.close_modal("set-user-status-modal", {micromodal: true});
 }
 
 export function submit_new_status() {
@@ -92,11 +92,11 @@ export function initialize() {
         update_button();
     });
 
-    $("body").on("click", "#set_user_status_modal .set_user_status", () => {
+    $("body").on("click", "#set-user-status-modal .modal__btn-primary", () => {
         submit_new_status();
     });
 
-    $("body").on("keypress", "#set_user_status_modal .user_status", (event) => {
+    $("body").on("keypress", "#set-user-status-modal .user_status", (event) => {
         if (event.key === "Enter") {
             event.preventDefault();
 
@@ -104,7 +104,7 @@ export function initialize() {
         }
     });
 
-    $("body").on("keyup", "#set_user_status_modal input.user_status", () => {
+    $("body").on("keyup", "#set-user-status-modal input.user_status", () => {
         update_button();
         toggle_clear_message_button();
     });

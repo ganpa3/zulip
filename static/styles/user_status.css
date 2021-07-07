@@ -1,16 +1,11 @@
-#set_user_status_modal {
+#set-user-status-modal {
     /* A narrower width is more attractive for this modal. */
-    width: 384px;
-    @media (width < $ml_min) {
-        width: 100%;
+    .modal__container {
+        width: 24rem;
     }
 
-    /* Center `position-fixed` modal */
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin-left: 0;
-
     input.user_status {
+        margin: 0;
         width: 94%;
         @media (width < $ml_min) {
             width: 93%;
