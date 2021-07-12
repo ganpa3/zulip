@@ -118,12 +118,12 @@ export function activate({
         const html = render_widgets_poll_widget();
         elem.html(html);
 
-        elem.find("input.poll-question").on("keyup", (e) => {
+        $("#main_div").on("keyup", "input.poll-question", (e) => {
             e.stopPropagation();
             update_edit_controls();
         });
 
-        elem.find("input.poll-question").on("keydown", (e) => {
+        $("#main_div").on("keydown", "input.poll-question", (e) => {
             e.stopPropagation();
 
             if (e.key === "Enter") {
@@ -137,27 +137,27 @@ export function activate({
             }
         });
 
-        elem.find(".poll-edit-question").on("click", (e) => {
+        $("#main_div").on("click", "poll-edit-question", (e) => {
             e.stopPropagation();
             start_editing();
         });
 
-        elem.find("button.poll-question-check").on("click", (e) => {
+        $("#main_div").on("click", "button.poll-question-check", (e) => {
             e.stopPropagation();
             submit_question();
         });
 
-        elem.find("button.poll-question-remove").on("click", (e) => {
+        $("#main_div").on("click", "button.poll-question-remove", (e) => {
             e.stopPropagation();
             abort_edit();
         });
 
-        elem.find("button.poll-option").on("click", (e) => {
+        $("#main_div").on("click", "button.poll-option", (e) => {
             e.stopPropagation();
             submit_option();
         });
 
-        elem.find("input.poll-option").on("keydown", (e) => {
+        $("#main_div").on("keydown", "input.poll-option", (e) => {
             e.stopPropagation();
 
             if (e.key === "Enter") {
@@ -178,9 +178,9 @@ export function activate({
         const html = render_widgets_poll_widget_results(widget_data);
         elem.find("ul.poll-widget").html(html);
 
-        elem.find("button.poll-vote")
-            .off("click")
-            .on("click", (e) => {
+        $("#main_div")
+            .off("click", "button.poll-vote")
+            .on("click", "button.poll-vote", (e) => {
                 e.stopPropagation();
                 const key = $(e.target).attr("data-key");
                 submit_vote(key);

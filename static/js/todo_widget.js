@@ -161,7 +161,7 @@ export function activate(opts) {
         const html = render_widgets_todo_widget();
         elem.html(html);
 
-        elem.find("button.add-task").on("click", (e) => {
+        $("#main_div").on("click", "button.add-task", (e) => {
             e.stopPropagation();
             elem.find(".widget-error").text("");
             const task = elem.find("input.add-task").val().trim();
@@ -191,7 +191,7 @@ export function activate(opts) {
         elem.find("ul.todo-widget").html(html);
         elem.find(".widget-error").text("");
 
-        elem.find("button.task").on("click", (e) => {
+        $("#main_div").on("click", "button.task", (e) => {
             e.stopPropagation();
             const key = $(e.target).attr("data-key");
 
